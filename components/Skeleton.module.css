@@ -244,6 +244,34 @@
   border-radius: var(--radius-pill, 999px);
 }
 
+@media (max-width: 768px) {
+  .card,
+  .posterCard {
+    width: clamp(126px, 22.5vw, 158px);
+  }
+
+  .artPlaceholder {
+    aspect-ratio: 2 / 3;
+  }
+
+  .gridWide {
+    grid-template-columns: repeat(auto-fill, minmax(clamp(130px, 28vw, 170px), 1fr));
+    gap: 20px 12px;
+  }
+
+  .rowScroller {
+    gap: 12px;
+    padding: 8px var(--page-pad, 16px) 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .card,
+  .posterCard {
+    width: clamp(122px, 34vw, 146px);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .shimmer {
     animation: none;

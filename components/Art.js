@@ -111,6 +111,7 @@ export default function Art({ title: rawTitle, variant = "poster", showTitle = t
   const card = getCardObject(rawTitle);
   const titleText = getTitleString(card);
 
+  const isResponsive = variant === "responsive";
   const poster = variant === "poster";
   const primaryUrl = poster
     ? card.poster || card.backdrop
@@ -121,6 +122,43 @@ export default function Art({ title: rawTitle, variant = "poster", showTitle = t
   const failed = Boolean(activeUrl && failedForUrl === activeUrl);
 
   if (activeUrl && !failed) {
+    // If responsive variant is requested and both poster and backdrop exist,
+    // render a native <picture> so small screens (<= 768px) display the vertical poster
+    // while desktop screens display the horizontal backdrop.
+    if (isResponsive && card.poster && card.backdrop && card.poster !== card.backdrop && !triedAlt) {
+      return (
+        <picture
+          className={className}
+          style={{
+            width: "100%",
+            height: "100%",
+            display: "block",
+            ...style,
+          }}
+        >
+          <source media="(max-width: 768px)" srcSet={card.poster} />
+          <source media="(min-width: 769px)" srcSet={card.backdrop} />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={card.backdrop}
+            alt={titleText || "Media title"}
+            loading={priority ? "eager" : "lazy"}
+            decoding="async"
+            referrerPolicy="no-referrer"
+            onError={() => {
+              setAltForUrl(card.backdrop);
+            }}
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              display: "block",
+            }}
+          />
+        </picture>
+      );
+    }
+
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
@@ -149,11 +187,12 @@ export default function Art({ title: rawTitle, variant = "poster", showTitle = t
   }
 
   const [h1, h2] = card.hues || [28, 12];
-  const w = poster ? 200 : 1600;
-  const h = poster ? 300 : 900;
+  const isVertical = poster || isResponsive;
+  const w = isVertical ? 200 : 1600;
+  const h = isVertical ? 300 : 900;
   const ls = lines(titleText);
   const longest = Math.max(1, ...ls.map((l) => l.length));
-  const fs = poster ? Math.min(30, Math.floor(172 / (longest * 0.64))) : 80;
+  const fs = isVertical ? Math.min(30, Math.floor(172 / (longest * 0.64))) : 80;
 
   return (
     <svg
@@ -177,8 +216,8 @@ export default function Art({ title: rawTitle, variant = "poster", showTitle = t
       </defs>
       <rect width={w} height={h} fill={`url(#g${uid})`} />
       <Motif kind={card?.motif ?? 0} w={w} h={h} h1={h1} h2={h2} />
-      {poster && <rect width={w} height={h} fill={`url(#s${uid})`} />}
-      {poster && showTitle && (
+      {isVertical && <rect width={w} height={h} fill={`url(#s${uid})`} />}
+      {isVertical && showTitle && (
         <g fontFamily="var(--font-body)" fontWeight="800" fill="#fff" letterSpacing="-0.5">
           {ls.map((l, i) => (
             <text key={i} x="14" y={h - 16 - (ls.length - 1 - i) * (fs + 3)} fontSize={fs}>

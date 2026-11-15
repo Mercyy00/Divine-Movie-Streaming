@@ -67,6 +67,13 @@
   transition: transform 0.42s var(--ease-out);
 }
 
+.img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
 .shade {
   position: absolute;
   inset: 0;
@@ -389,8 +396,8 @@
   .moreBtn,
   .save {
     opacity: 1;
-    width: 36px;
-    height: 36px;
+    width: 28px;
+    height: 28px;
   }
   .moreBtn::after,
   .save::after {
@@ -836,12 +843,57 @@
   text-overflow: ellipsis;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .card,
-  .wide {
-    width: clamp(200px, 58vw, 260px);
-  }
+  .wide,
   .poster {
-    width: clamp(120px, 34vw, 160px);
+    width: clamp(126px, 22.5vw, 158px);
+  }
+
+  .fluid,
+  .fluid.wide {
+    width: 100%;
+  }
+
+  .artStage,
+  .wide .artStage {
+    aspect-ratio: 2 / 3;
+  }
+
+  .tileTitleWrap {
+    display: none !important;
+  }
+
+  .notch {
+    height: 24px;
+    padding: 0 10px;
+    border-bottom-right-radius: 8px;
+  }
+
+  .badgeRank {
+    font-size: 12px;
+  }
+
+  .badgeHd,
+  .badgeCam,
+  .badgeNew {
+    font-size: 11px;
+  }
+
+  .name {
+    font-size: 13.5px;
+  }
+
+  .sub {
+    font-size: 12px;
+    gap: 4px;
+  }
+}
+
+@media (max-width: 480px) {
+  .card,
+  .wide,
+  .poster {
+    width: clamp(122px, 34vw, 146px);
   }
 }

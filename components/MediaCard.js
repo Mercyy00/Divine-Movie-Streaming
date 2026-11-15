@@ -181,7 +181,10 @@ export default function MediaCard({
   // Hover timer triggers 3-second preview popup
   const handleMouseEnter = () => {
     prefetchTitleRoute();
-    if (typeof window !== "undefined" && window.matchMedia("(hover: none)").matches) {
+    if (
+      typeof window !== "undefined" &&
+      (window.matchMedia("(hover: none)").matches || window.innerWidth <= 768)
+    ) {
       return;
     }
     isHoveredRef.current = true;
@@ -641,7 +644,7 @@ export default function MediaCard({
           <span className={styles.art}>
             <Art
               title={title}
-              variant={wide ? "backdrop" : "poster"}
+              variant={wide ? "responsive" : "poster"}
               showTitle={false}
               className={styles.img}
             />

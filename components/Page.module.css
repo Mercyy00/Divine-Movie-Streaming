@@ -33,9 +33,10 @@
   grid-template-columns: repeat(auto-fill, minmax(clamp(300px, 16.667vw, 320px), 1fr));
 }
 
-@media (max-width: 700px) {
+@media (max-width: 768px) {
   .gridWide {
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(clamp(130px, 28vw, 170px), 1fr));
+    gap: 20px 12px;
   }
 }
 

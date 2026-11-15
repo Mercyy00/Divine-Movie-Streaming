@@ -60,3 +60,30 @@ test("buildGroupedSearchSections groups Movies, Series, Anime, and People and de
   assert.equal(normalizeSearchItemKind({ id: "tv-1" }), "series");
   assert.equal(normalizeSearchItemKind({ id: "anilist-5" }), "anime");
 });
+
+test("MediaCard and Art enforce responsive vertical poster tiles on small screens (<= 768px)", async () => {
+  const fs = await import("node:fs");
+  const path = await import("node:path");
+
+  const mediaCardCss = fs.readFileSync(path.resolve("components/MediaCard.module.css"), "utf8");
+  const mediaCardJs = fs.readFileSync(path.resolve("components/MediaCard.js"), "utf8");
+  const artJs = fs.readFileSync(path.resolve("components/Art.js"), "utf8");
+  const skeletonCss = fs.readFileSync(path.resolve("components/Skeleton.module.css"), "utf8");
+
+  // CSS media query contract: switches to 2:3 vertical poster cards on <= 768px
+  assert.match(mediaCardCss, /@media\s*\(\s*max-width:\s*768px\s*\)/);
+  assert.match(mediaCardCss, /aspect-ratio:\s*2\s*\/\s*3/);
+  assert.match(mediaCardCss, /\.tileTitleWrap\s*\{[^}]*display:\s*none\s*!important/);
+
+  // MediaCard renders responsive variant for wide cards
+  assert.match(mediaCardJs, /variant=\{wide \? "responsive" : "poster"\}/);
+
+  // Art.js renders <picture> with (max-width: 768px) for poster and (min-width: 769px) for backdrop
+  assert.match(artJs, /isResponsive/);
+  assert.match(artJs, /media="\(max-width:\s*768px\)"/);
+  assert.match(artJs, /media="\(min-width:\s*769px\)"/);
+
+  // Skeleton aligns aspect ratio on small screens to prevent layout shift
+  assert.match(skeletonCss, /@media\s*\(\s*max-width:\s*768px\s*\)/);
+  assert.match(skeletonCss, /aspect-ratio:\s*2\s*\/\s*3/);
+});
