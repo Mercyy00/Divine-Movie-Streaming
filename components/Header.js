@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useSession, signOut } from "next-auth/react";
 import { DEFAULT_AVATAR, normalizeAvatarUrl } from "../lib/avatars";
+import { clearAllLocalData } from "../lib/store";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import {
@@ -606,7 +607,17 @@ export default function Header({ watchTitle = null }) {
         type="button"
         role="menuitem"
         className={`${styles.menuItem} ${signedIn ? styles.menuBad : ""}`}
-        onClick={() => (signedIn ? signOut({ callbackUrl: "/" }) : router.push("/auth/signin"))}
+        onClick={async () => {
+          if (signedIn) {
+            if (typeof window !== "undefined") {
+              window.localStorage.removeItem("divine:current-user-id");
+            }
+            clearAllLocalData();
+            await signOut({ callbackUrl: "/" });
+          } else {
+            router.push("/auth/signin");
+          }
+        }}
       >
         <span style={{ display: "inline-flex", flex: "0 0 auto", transform: "none" }}>
           {signedIn ? <LogOut size={17} strokeWidth={1.75} /> : <LogIn size={17} strokeWidth={1.75} />}

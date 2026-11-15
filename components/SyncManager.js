@@ -14,6 +14,7 @@ import {
   readProfileBucket,
   readAllProfileBuckets,
   writeProfileBucket,
+  clearAllLocalData,
   getGuestId,
   getOrCreateGuestId,
 } from "../lib/store";
@@ -22,7 +23,8 @@ import { mergeUserData, cleanSettingsForSync } from "../lib/syncMerge";
 // Keeps localStorage and the database in step for both signed-in users and guests,
 // preserving full isolation across profiles.
 export default function SyncManager() {
-  const { status } = useSession();
+  const { data: session, status } = useSession();
+  const currentUserId = session?.user?.id || session?.user?.email || null;
   const [history] = useHistory();
   const [list] = useList();
   const [settings, setSettings] = useSettings();
@@ -98,16 +100,27 @@ export default function SyncManager() {
   // 1. Authenticated login: claim guest record, pull server data, merge isolated per-profile buckets, push merged state.
   useEffect(() => {
     if (status !== "authenticated") {
+      if (status === "unauthenticated" && typeof window !== "undefined") {
+        const storedUserId = window.localStorage.getItem("divine:current-user-id");
+        if (storedUserId) {
+          window.localStorage.removeItem("divine:current-user-id");
+          clearAllLocalData();
+        }
+      }
       ready.current = false;
       dirty.current = false;
       return;
     }
+    if (!currentUserId) return;
     let cancelled = false;
 
     const runInitialAuthSync = async () => {
       try {
+        const storedUserId = typeof window !== "undefined" ? window.localStorage.getItem("divine:current-user-id") : null;
+        const isUserSwitch = Boolean(storedUserId && storedUserId !== currentUserId);
+
         const guestId = getGuestId();
-        if (guestId) {
+        if (guestId && !storedUserId) {
           await fetch("/api/user/claim-guest", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -119,40 +132,55 @@ export default function SyncManager() {
         const srv = r.ok ? await r.json() : null;
         if (cancelled || !srv) return;
 
-        const allLocalBuckets = readAllProfileBuckets(latest.current.profiles);
-        const guestLocal = allLocalBuckets.guest || readProfileBucket("guest");
-        const secondaryLocalBuckets = {};
-        for (const [pid, bucket] of Object.entries(allLocalBuckets)) {
-          if (pid && pid !== "guest") secondaryLocalBuckets[pid] = bucket;
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem("divine:current-user-id", currentUserId);
         }
 
-        const localForMerge = {
-          history: guestLocal.history,
-          list: guestLocal.watchlist,
-          settings: latest.current.settings,
-          reactions: guestLocal.reactions,
-          customLists: guestLocal.customLists,
-          ratings: guestLocal.ratings,
-          watched: guestLocal.watched,
-          watchLog: guestLocal.watchLog,
-          profiles: latest.current.profiles,
-          profileBuckets: secondaryLocalBuckets,
-        };
+        let merged;
+        let shouldPushMerged = false;
 
-        const hadLocalData = Object.values(allLocalBuckets).some(
-          (b) =>
-            (b.history?.length || 0) > 0 ||
-            (b.watchlist?.length || 0) > 0 ||
-            Object.keys(b.reactions || {}).length > 0 ||
-            Object.keys(b.ratings || {}).length > 0 ||
-            Object.keys(b.watched || {}).length > 0 ||
-            (b.customLists?.length || 0) > 0
-        );
+        if (isUserSwitch) {
+          // A different user logged in! Do NOT merge previous user's local data.
+          clearAllLocalData();
+          merged = srv;
+        } else {
+          // Same user or a fresh guest signing in for the first time
+          const allLocalBuckets = readAllProfileBuckets(latest.current.profiles);
+          const guestLocal = allLocalBuckets.guest || readProfileBucket("guest");
+          const secondaryLocalBuckets = {};
+          for (const [pid, bucket] of Object.entries(allLocalBuckets)) {
+            if (pid && pid !== "guest") secondaryLocalBuckets[pid] = bucket;
+          }
 
-        const merged = mergeUserData(srv, localForMerge);
+          const localForMerge = {
+            history: guestLocal.history,
+            list: guestLocal.watchlist,
+            settings: latest.current.settings,
+            reactions: guestLocal.reactions,
+            customLists: guestLocal.customLists,
+            ratings: guestLocal.ratings,
+            watched: guestLocal.watched,
+            watchLog: guestLocal.watchLog,
+            profiles: latest.current.profiles,
+            profileBuckets: secondaryLocalBuckets,
+          };
+
+          const hadLocalData = Object.values(allLocalBuckets).some(
+            (b) =>
+              (b.history?.length || 0) > 0 ||
+              (b.watchlist?.length || 0) > 0 ||
+              Object.keys(b.reactions || {}).length > 0 ||
+              Object.keys(b.ratings || {}).length > 0 ||
+              Object.keys(b.watched || {}).length > 0 ||
+              (b.customLists?.length || 0) > 0
+          );
+
+          merged = mergeUserData(srv, localForMerge);
+          shouldPushMerged = hadLocalData && !storedUserId;
+        }
 
         // Write secondary profile buckets first quietly
-        const mergedSecondary = merged.extras.profileBuckets || {};
+        const mergedSecondary = merged.extras?.profileBuckets || {};
         for (const [pid, bucket] of Object.entries(mergedSecondary)) {
           writeProfileBucket(pid, bucket, false);
         }
@@ -161,24 +189,28 @@ export default function SyncManager() {
         writeProfileBucket(
           "guest",
           {
-            history: merged.history,
-            watchlist: merged.watchlist,
-            customLists: merged.extras.customLists,
-            reactions: merged.extras.reactions,
-            ratings: merged.extras.ratings,
-            watched: merged.extras.watched,
-            watchLog: merged.extras.watchLog || [],
+            history: merged.history || [],
+            watchlist: merged.watchlist || [],
+            customLists: merged.extras?.customLists || [],
+            reactions: merged.extras?.reactions || {},
+            ratings: merged.extras?.ratings || {},
+            watched: merged.extras?.watched || {},
+            watchLog: merged.extras?.watchLog || [],
           },
           true
         );
 
-        if (Array.isArray(merged.extras.profiles) && merged.extras.profiles.length > 0) {
+        if (Array.isArray(merged.extras?.profiles) && merged.extras.profiles.length > 0) {
           setProfiles(merged.extras.profiles);
+        } else if (isUserSwitch) {
+          setProfiles([]);
         }
-        setSettings((s) => ({ ...s, ...merged.extras.settings }));
+        if (merged.extras?.settings) {
+          setSettings((s) => ({ ...s, ...merged.extras.settings }));
+        }
 
         ready.current = true;
-        if (hadLocalData) {
+        if (shouldPushMerged) {
           fetch("/api/user/sync", {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
@@ -190,7 +222,9 @@ export default function SyncManager() {
             }),
           }).catch(() => {});
         }
-      } catch {}
+      } catch (err) {
+        console.error("runInitialAuthSync error:", err);
+      }
     };
 
     runInitialAuthSync();
@@ -199,7 +233,7 @@ export default function SyncManager() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status]);
+  }, [status, currentUserId]);
 
   // 2. Authenticated debounced push on any change across active profile or profile list.
   useEffect(() => {

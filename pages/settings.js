@@ -382,7 +382,7 @@ export default function SettingsPage() {
         await fetch("/api/user/signout-all", { method: "POST" });
       } catch {}
       Object.keys(localStorage)
-        .filter((k) => k.startsWith("viv:"))
+        .filter((k) => k.startsWith("viv:") || k.startsWith("divine:"))
         .forEach((k) => localStorage.removeItem(k));
       showToast("Signed out of all devices");
       signOut({ callbackUrl: "/" });
@@ -404,7 +404,7 @@ export default function SettingsPage() {
           return;
         }
         Object.keys(localStorage)
-          .filter((k) => k.startsWith("viv:") || k === "divine:guest-id")
+          .filter((k) => k.startsWith("viv:") || k.startsWith("divine:"))
           .forEach((k) => localStorage.removeItem(k));
         signOut({ callbackUrl: "/" });
         return;
