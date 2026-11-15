@@ -67,7 +67,7 @@ export default function BrandCard({ item, param = "service", href }) {
       </div>
       <div className={styles.footer}>
         <span className={styles.name}>{item.name}</span>
-        <ArrowUpRight size={14} className={styles.arrow} strokeWidth={2.5} />
+        <ArrowUpRight size={14} className={styles.arrow} strokeWidth={1.75} />
       </div>
     </Link>
   );

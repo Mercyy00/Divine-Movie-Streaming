@@ -267,7 +267,7 @@ export default function Schedule({ initialAiring = [], initialComingSoon = [] })
     };
     toggleScheduleItem(setSchedule, t.id, titlePayload);
     if (!currentlyReminded) {
-      showToast(`🔔 Reminder set! You'll be notified when it airs.`);
+      showToast("Reminder set. You'll be notified when it airs.");
     } else {
       showToast(`Reminder removed for "${t.title}"`);
     }
@@ -486,12 +486,12 @@ export default function Schedule({ initialAiring = [], initialComingSoon = [] })
                             >
                               {isReminded(t.id) ? (
                                 <>
-                                  <Check size={12} strokeWidth={2.6} />
+                                  <Check size={12} strokeWidth={1.75} />
                                   <span>Reminded</span>
                                 </>
                               ) : (
                                 <>
-                                  <Bell size={12} />
+                                  <Bell size={12} strokeWidth={1.75} />
                                   <span>Remind me</span>
                                 </>
                               )}
@@ -503,7 +503,7 @@ export default function Schedule({ initialAiring = [], initialComingSoon = [] })
                               title="Export event to calendar (.ics)"
                               aria-label={`Export .ics calendar file for ${t.title}`}
                             >
-                              <Calendar size={11} />
+                              <Calendar size={12} strokeWidth={1.75} />
                               <span>.ics</span>
                             </button>
                           </div>
@@ -562,12 +562,12 @@ export default function Schedule({ initialAiring = [], initialComingSoon = [] })
                 >
                   {isReminded(t.id) ? (
                     <>
-                      <Check size={13} strokeWidth={2.6} />
+                      <Check size={13} strokeWidth={1.75} />
                       <span>Reminded</span>
                     </>
                   ) : (
                     <>
-                      <Bell size={13} />
+                      <Bell size={13} strokeWidth={1.75} />
                       <span>Remind me</span>
                     </>
                   )}
@@ -579,7 +579,7 @@ export default function Schedule({ initialAiring = [], initialComingSoon = [] })
                   title="Export to Calendar (.ics)"
                   aria-label={`Export .ics file for ${t.title}`}
                 >
-                  <Calendar size={12} />
+                  <Calendar size={13} strokeWidth={1.75} />
                 </button>
               </div>
             </div>

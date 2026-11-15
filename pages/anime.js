@@ -450,7 +450,7 @@ export default function Anime({ initialHero = [], initialTrending = [], initialT
       <section
         ref={gridRef}
         style={{
-          padding: "36px var(--page-pad) 64px",
+          padding: "36px var(--page-pad) 96px",
           maxWidth: "var(--page-max)",
           margin: "0 auto",
         }}

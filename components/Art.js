@@ -148,7 +148,7 @@ export default function Art({ title: rawTitle, variant = "poster", showTitle = t
     );
   }
 
-  const [h1, h2] = card.hues || [210, 260];
+  const [h1, h2] = card.hues || [28, 12];
   const w = poster ? 200 : 1600;
   const h = poster ? 300 : 900;
   const ls = lines(titleText);

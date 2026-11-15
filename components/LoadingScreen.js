@@ -1,7 +1,7 @@
 import styles from "./LoadingScreen.module.css";
 
 export default function LoadingScreen({
-  message = "Loading…",
+  message = "",
   fullScreen = false,
   minHeight = "60vh",
   size = "md",
@@ -16,22 +16,14 @@ export default function LoadingScreen({
     >
       <div className={`${styles.loaderCard} ${styles[size] || styles.md}`}>
         <div className={styles.glowAura} aria-hidden="true" />
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/loader-leaf.gif"
-          alt="Loading..."
-          className={styles.leafImg}
-        />
-        {message && (
-          <div className={styles.messageWrap}>
-            <span className={styles.messageText}>{message}</span>
-            <span className={styles.dots} aria-hidden="true">
-              <span className={styles.dot} />
-              <span className={styles.dot} />
-              <span className={styles.dot} />
-            </span>
+        <div className={styles.flowerSpinner} aria-hidden="true">
+          <div className={styles.dotsContainer}>
+            <div className={styles.biggerDot}>
+              <div className={styles.smallerDot} />
+            </div>
           </div>
-        )}
+        </div>
+        <span className={styles.srOnly}>{message || "Loading"}</span>
       </div>
     </div>
   );

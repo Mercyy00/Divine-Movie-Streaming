@@ -1,13 +1,144 @@
-.wrap { min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; padding: 24px var(--page-pad, 16px); }
-.card { width: 100%; max-width: 400px; padding: 32px; border-radius: 20px; background: rgba(18,18,18,.88); border: 1px solid rgba(255,255,255,.12); backdrop-filter: blur(24px) saturate(190%); display: flex; flex-direction: column; gap: 14px; }
-.title { margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -.02em; }
-.sub { margin: 0; color: var(--text-dim); font-size: 14px; }
-.field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; color: var(--text-soft); }
-.input { height: 44px; padding: 0 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.07); color: #fff; font: inherit; font-size: 15px; }
-.input:focus { outline: 2px solid rgba(255,255,255,.35); outline-offset: 1px; }
-.btn { height: 46px; border-radius: 999px; border: 0; background: #fff; color: #000; font: inherit; font-weight: 700; cursor: pointer; }
-.btn:disabled { opacity: .6; cursor: default; }
-.oauth { height: 44px; border-radius: 999px; border: 1px solid rgba(255,255,255,.16); background: rgba(255,255,255,.07); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
-.error { margin: 0; padding: 10px 12px; border-radius: 10px; background: rgba(244,119,107,.14); color: #f4776b; font-size: 13px; }
-.alt { font-size: 13px; color: var(--text-dim); text-align: center; }
-.alt a { color: #fff; font-weight: 600; }
+.wrap {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px var(--page-pad, 16px);
+}
+
+.card {
+  width: 100%;
+  max-width: 400px;
+  padding: 32px;
+  border-radius: var(--radius-panel, 20px);
+  background: rgba(20, 14, 10, 0.88);
+  border: 1px solid var(--hairline-strong, rgba(255, 214, 170, 0.18));
+  backdrop-filter: var(--g-blur);
+  -webkit-backdrop-filter: var(--g-blur);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.65), var(--g-edge);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.title {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text, #FFF6EC);
+}
+
+.sub {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-soft);
+}
+
+.input {
+  height: 44px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid var(--hairline, rgba(255, 214, 170, 0.14));
+  background: rgba(255, 235, 210, 0.06);
+  color: var(--text, #FFF6EC);
+  font: inherit;
+  font-size: 15px;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.input:focus {
+  outline: none;
+  background: rgba(255, 235, 210, 0.1);
+  border-color: var(--accent, #FF8A2B);
+}
+
+.btn {
+  height: 44px;
+  border-radius: 999px;
+  border: 0;
+  background: #ffffff;
+  color: var(--on-accent, #0A0807);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.9);
+  transform: translateY(-1px);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.oauth {
+  height: 44px;
+  border-radius: 999px;
+  border: 1px solid var(--hairline-strong, rgba(255, 214, 170, 0.18));
+  background: var(--g-fill);
+  color: var(--text, #FFF6EC);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.oauth:hover {
+  background: var(--g-fill-hover);
+  border-color: var(--hairline-strong, rgba(255, 214, 170, 0.28));
+}
+
+.error {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--danger-soft, rgba(255, 90, 77, 0.12));
+  border: 1px solid rgba(255, 90, 77, 0.28);
+  color: var(--danger, #FF5A4D);
+  font-size: 13.5px;
+  line-height: 1.4;
+}
+
+.success {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(91, 185, 140, 0.12);
+  border: 1px solid rgba(91, 185, 140, 0.28);
+  color: var(--text, #FFF6EC);
+  font-size: 13.5px;
+  line-height: 1.4;
+}
+
+.alt {
+  font-size: 13px;
+  color: var(--text-dim);
+  text-align: center;
+  margin: 4px 0 0;
+}
+
+.alt a {
+  color: #ffffff;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.alt a:hover {
+  text-decoration: underline;
+}

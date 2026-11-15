@@ -690,7 +690,7 @@ export default function MediaCard({
           ) : null}
 
           <span className={styles.hoverPlay}>
-            <Play size={20} fill="currentColor" />
+            <Play size={18} fill="currentColor" strokeWidth={1.75} />
           </span>
 
           {typeof progress === "number" && progress > 0 && (
@@ -728,7 +728,7 @@ export default function MediaCard({
           aria-label="More options"
           title="More options"
         >
-          <MoreHorizontal size={15} />
+          <MoreHorizontal size={16} strokeWidth={1.75} />
         </button>
 
         <button
@@ -738,7 +738,7 @@ export default function MediaCard({
           aria-pressed={saved}
           aria-label={saved ? `Remove ${title.title} from My list` : `Add ${title.title} to My list`}
         >
-          {saved ? <Check size={14} strokeWidth={2.8} /> : <Plus size={14} strokeWidth={2.8} />}
+          {saved ? <Check size={15} strokeWidth={1.75} /> : <Plus size={15} strokeWidth={1.75} />}
         </button>
       </div>
 
@@ -781,7 +781,7 @@ export default function MediaCard({
               aria-label="Not for me"
               title="Not for me"
             >
-              <ThumbsDown size={17} fill={reaction === "dislike" ? "currentColor" : "none"} />
+              <ThumbsDown size={17} strokeWidth={1.75} fill={reaction === "dislike" ? "currentColor" : "none"} />
             </button>
             <button
               type="button"
@@ -790,7 +790,7 @@ export default function MediaCard({
               aria-label="I like this"
               title="I like this"
             >
-              <ThumbsUp size={17} fill={reaction === "like" ? "currentColor" : "none"} />
+              <ThumbsUp size={17} strokeWidth={1.75} fill={reaction === "like" ? "currentColor" : "none"} />
             </button>
             <button
               type="button"
@@ -799,7 +799,7 @@ export default function MediaCard({
               aria-label="Love this"
               title="Love this"
             >
-              <Heart size={17} fill={reaction === "love" ? "currentColor" : "none"} />
+              <Heart size={17} strokeWidth={1.75} fill={reaction === "love" ? "currentColor" : "none"} />
             </button>
           </div>
 
@@ -809,7 +809,7 @@ export default function MediaCard({
             className={styles.menuItem}
             onClick={handleToggleWatchlist}
           >
-            {saved ? <Check size={15} strokeWidth={2.4} /> : <Plus size={15} strokeWidth={2.4} />}
+            {saved ? <Check size={15} strokeWidth={1.75} /> : <Plus size={15} strokeWidth={1.75} />}
             <span>{saved ? "Remove from watchlist" : "Add to watchlist"}</span>
           </button>
 
@@ -824,9 +824,9 @@ export default function MediaCard({
               className={styles.menuItem}
               onClick={() => setShowSubList((s) => !s)}
             >
-              <ListPlus size={15} />
+              <ListPlus size={15} strokeWidth={1.75} />
               <span>Add to list</span>
-              <ChevronRight size={14} className={styles.subChevron} />
+              <ChevronRight size={14} strokeWidth={1.75} className={styles.subChevron} />
             </button>
 
             {showSubList && (
@@ -845,7 +845,7 @@ export default function MediaCard({
                         onClick={() => handleToggleCustomList(cl)}
                       >
                         <span>{cl.name}</span>
-                        {isAlreadyInList && <Check size={14} strokeWidth={2.6} />}
+                        {isAlreadyInList && <Check size={14} strokeWidth={1.75} />}
                       </button>
                     );
                   })
@@ -863,7 +863,7 @@ export default function MediaCard({
               className={styles.menuItem}
               onClick={handleToggleSchedule}
             >
-              <Calendar size={15} />
+              <Calendar size={15} strokeWidth={1.75} />
               <span>{inSchedule ? "Remove from schedule" : "Add to schedule"}</span>
             </button>
           )}
@@ -874,7 +874,7 @@ export default function MediaCard({
               className={styles.menuItem}
               onClick={handleRemoveFromContinueWatching}
             >
-              <X size={15} />
+              <X size={15} strokeWidth={1.75} />
               <span>Remove from continue watching</span>
             </button>
           )}
@@ -885,7 +885,7 @@ export default function MediaCard({
             className={styles.menuItem}
             onClick={handleShare}
           >
-            <Share2 size={15} />
+            <Share2 size={15} strokeWidth={1.75} />
             <span>Share</span>
           </button>
         </div>
@@ -938,7 +938,7 @@ export default function MediaCard({
             {/* Primary Action Buttons: Watch Now + Watchlist */}
             <div className={styles.popupActions}>
               <Link href={`/watch/${title.id}`} className={styles.popupWatchBtn}>
-                <Play size={16} fill="currentColor" />
+                <Play size={16} fill="currentColor" strokeWidth={1.75} />
                 <span>Watch Now</span>
               </Link>
               <button
@@ -948,7 +948,7 @@ export default function MediaCard({
                 aria-label={saved ? "Remove from watchlist" : "Add to watchlist"}
                 title={saved ? "Remove from watchlist" : "Add to watchlist"}
               >
-                {saved ? <Check size={18} strokeWidth={2.8} /> : <Plus size={18} strokeWidth={2.8} />}
+                {saved ? <Check size={18} strokeWidth={1.75} /> : <Plus size={18} strokeWidth={1.75} />}
               </button>
             </div>
 

@@ -15,8 +15,10 @@ import {
   Captions,
   RectangleHorizontal,
   Check,
+  X,
 } from "lucide-react";
 import useVideoPlayback from "./useVideoPlayback";
+import LoadingScreen from "./LoadingScreen";
 import { joinRoom } from "../lib/watchParty";
 import { useSettings } from "../lib/store";
 import {
@@ -741,7 +743,7 @@ export default function VideoPlayer({
             onLoad={handleIframeLoad}
           />
           {isEmbedTimedOut && (
-            <div className={styles.status} role="alert" style={{ background: "rgba(7, 8, 13, 0.86)", inset: 0 }}>
+            <div className={styles.status} role="alert" style={{ background: "rgba(10, 8, 7, 0.88)", inset: 0 }}>
               <p>{activeServer?.name || "This server"} timed out after 12 seconds.</p>
               <div className={styles.unavailableActions}>
                 {anyOtherOnlineServer && (
@@ -760,40 +762,13 @@ export default function VideoPlayer({
             </div>
           )}
           {!isEmbedTimedOut && switchNotice && (
-            <div
-              role="status"
-              style={{
-                position: "absolute",
-                top: 14,
-                right: 14,
-                zIndex: 8,
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 8,
-                padding: "7px 12px",
-                borderRadius: 999,
-                background: "rgba(18, 20, 26, 0.85)",
-                border: "1px solid rgba(255, 255, 255, 0.16)",
-                color: "#fff",
-                fontSize: 12,
-                fontWeight: 600,
-              }}
-            >
+            <div role="status" className={styles.switchNoticeBar}>
               <span>{switchNotice}</span>
               {anyOtherOnlineServer && (
                 <button
                   type="button"
                   onClick={() => switchToServer(anyOtherOnlineServer)}
-                  style={{
-                    background: "rgba(255, 255, 255, 0.16)",
-                    color: "#fff",
-                    border: "1px solid rgba(255, 255, 255, 0.24)",
-                    borderRadius: 999,
-                    padding: "3px 9px",
-                    fontSize: 11,
-                    fontWeight: 700,
-                    cursor: "pointer",
-                  }}
+                  className={styles.switchNoticeBtn}
                 >
                   Try another server
                 </button>
@@ -802,16 +777,9 @@ export default function VideoPlayer({
                 type="button"
                 aria-label="Dismiss server notice"
                 onClick={() => setSwitchNotice("")}
-                style={{
-                  background: "transparent",
-                  color: "rgba(255,255,255,0.7)",
-                  border: 0,
-                  cursor: "pointer",
-                  fontSize: 12,
-                  padding: "0 2px",
-                }}
+                className={styles.switchNoticeClose}
               >
-                ✕
+                <X size={14} strokeWidth={1.75} />
               </button>
             </div>
           )}
@@ -839,7 +807,7 @@ export default function VideoPlayer({
                     onClick={() => setMobileSheet((prev) => ({ ...prev, isOpen: false }))}
                     aria-label="Close settings"
                   >
-                    ✕
+                    <X size={16} strokeWidth={1.75} />
                   </button>
                 </div>
 
@@ -852,7 +820,7 @@ export default function VideoPlayer({
                       onClick={() => handleMobileOptionSelect(row)}
                     >
                       <span className={styles.mobileSheetLabel}>{row.label || row.value}</span>
-                      {row.selected && <span className={styles.mobileSheetCheck}>✓</span>}
+                      {row.selected && <Check size={16} strokeWidth={1.75} className={styles.mobileSheetCheck} />}
                     </button>
                   ))}
                 </div>
@@ -945,17 +913,7 @@ export default function VideoPlayer({
             </div>
           ) : player.buffering ? (
             <div className={styles.status} role="status">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/loader-leaf.gif"
-                alt=""
-                style={{
-                  width: 68,
-                  height: "auto",
-                  display: "block",
-                  filter: "drop-shadow(0 4px 16px rgba(255, 255, 255, 0.25))",
-                }}
-              />
+              <LoadingScreen size="sm" minHeight="auto" message="" />
               <p>{player.ready ? "Buffering…" : "Loading stream…"}</p>
             </div>
           ) : null}
@@ -1301,7 +1259,7 @@ export default function VideoPlayer({
                 onClick={() => setShowRecsDrawer(false)}
                 aria-label="Close"
               >
-                ✕
+                <X size={16} strokeWidth={1.75} />
               </button>
             </div>
             <div className={styles.inPlayerCardsGrid}>

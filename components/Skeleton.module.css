@@ -1,12 +1,12 @@
 .shimmer {
   background: linear-gradient(
     90deg,
-    rgba(255, 255, 255, 0.03) 20%,
-    rgba(255, 255, 255, 0.09) 50%,
-    rgba(255, 255, 255, 0.03) 80%
+    rgba(255, 235, 210, 0.025) 15%,
+    rgba(255, 235, 210, 0.06) 50%,
+    rgba(255, 235, 210, 0.025) 85%
   );
   background-size: 200% 100%;
-  animation: shimmer 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  animation: shimmer 2s cubic-bezier(0.22, 1, 0.36, 1) infinite;
 }
 
 @keyframes shimmer {
@@ -25,7 +25,7 @@
   width: clamp(220px, 19vw, 320px);
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .cardFluid {
@@ -40,10 +40,10 @@
   position: relative;
   width: 100%;
   aspect-ratio: 16 / 9;
-  border-radius: 12px;
+  border-radius: var(--radius-card, 16px);
   overflow: hidden;
-  background-color: var(--surface-2, #14171d);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background-color: var(--surface-1, #100C0A);
+  border: 1px solid var(--hairline, rgba(255, 214, 170, 0.08));
 }
 
 .posterArtPlaceholder {
@@ -60,13 +60,13 @@
 
 .titleLine {
   height: 14px;
-  width: 65%;
+  width: 64%;
   border-radius: 6px;
 }
 
 .subLine {
   height: 12px;
-  width: 25%;
+  width: 24%;
   border-radius: 6px;
 }
 
@@ -74,16 +74,16 @@
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(clamp(132px, 12vw, 190px), 1fr));
-  gap: 26px 16px;
+  gap: 24px 16px;
 }
 
 .gridWide {
-  grid-template-columns: repeat(auto-fill, minmax(clamp(300px, 16.667vw, 320px), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(clamp(280px, 18vw, 320px), 1fr));
 }
 
 /* Row Skeleton */
 .rowSection {
-  margin: 36px 0;
+  margin: 32px 0;
   position: relative;
 }
 
@@ -91,17 +91,17 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 var(--page-pad, 36px);
-  margin-bottom: 14px;
+  padding: 0 var(--page-pad, 32px);
+  margin-bottom: 16px;
 }
 
 .rowTitle {
-  font-family: var(--font-display, var(--font-body));
-  font-size: clamp(20px, 1.8vw, 24px);
-  font-weight: 700;
-  color: var(--text, #fff);
+  font-family: var(--font-body);
+  font-size: var(--fs-row, 22px);
+  font-weight: 600;
+  color: var(--text, #ffffff);
   margin: 0;
-  letter-spacing: -0.3px;
+  letter-spacing: -0.02em;
 }
 
 .rowTitlePlaceholder {
@@ -112,12 +112,12 @@
 
 .rowScroller {
   display: flex;
-  gap: 14px;
-  padding: 8px var(--page-pad, 36px) 16px;
+  gap: 16px;
+  padding: 8px var(--page-pad, 32px) 16px;
   overflow-x: hidden;
   position: relative;
-  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 60px), transparent 100%);
-  mask-image: linear-gradient(to right, #000 calc(100% - 60px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 64px), transparent 100%);
+  mask-image: linear-gradient(to right, #000 calc(100% - 64px), transparent 100%);
 }
 
 /* Hero Banner Skeleton */
@@ -127,7 +127,7 @@
   min-height: clamp(480px, 64vh, 760px);
   display: flex;
   align-items: flex-end;
-  background: var(--surface-1, #0a0a0c);
+  background: var(--bg, #0A0807);
   overflow: hidden;
 }
 
@@ -141,7 +141,7 @@
 .heroBackdrop {
   width: 100%;
   height: 100%;
-  background-color: var(--surface-2, #121318);
+  background-color: var(--surface-1, #100C0A);
 }
 
 .heroFadeLeft {
@@ -150,9 +150,9 @@
   width: clamp(260px, 50vw, 840px);
   background: linear-gradient(
     90deg,
-    rgba(8, 8, 8, 0.95) 0%,
-    rgba(8, 8, 8, 0.75) 45%,
-    rgba(8, 8, 8, 0) 100%
+    rgba(10, 8, 7, 0.96) 0%,
+    rgba(10, 8, 7, 0.72) 45%,
+    rgba(10, 8, 7, 0) 100%
   );
   pointer-events: none;
 }
@@ -163,9 +163,9 @@
   height: clamp(140px, 24vh, 320px);
   background: linear-gradient(
     0deg,
-    var(--bg, #080808) 0%,
-    rgba(8, 8, 8, 0.78) 50%,
-    rgba(8, 8, 8, 0) 100%
+    var(--bg, #0A0807) 0%,
+    rgba(10, 8, 7, 0.78) 50%,
+    rgba(10, 8, 7, 0) 100%
   );
   pointer-events: none;
 }
@@ -176,16 +176,16 @@
   width: 100%;
   max-width: var(--page-max, 1600px);
   margin: 0 auto;
-  padding: 0 var(--page-pad, 36px) clamp(36px, 6vw, 68px);
+  padding: 0 var(--page-pad, 32px) clamp(32px, 6vw, 64px);
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 16px;
 }
 
 .heroTitlePlaceholder {
   width: clamp(220px, 40vw, 440px);
-  height: clamp(38px, 4.5vw, 56px);
-  border-radius: 10px;
+  height: clamp(40px, 4.5vw, 56px);
+  border-radius: 12px;
 }
 
 .heroMetaRow {
@@ -195,9 +195,9 @@
 }
 
 .heroMetaPill {
-  height: 22px;
-  width: 54px;
-  border-radius: 6px;
+  height: 24px;
+  width: 56px;
+  border-radius: var(--radius-pill, 999px);
 }
 
 .heroDescPlaceholder {
@@ -209,7 +209,7 @@
 
 .heroDescLine1 {
   height: 14px;
-  width: 95%;
+  width: 96%;
   border-radius: 6px;
 }
 
@@ -229,17 +229,23 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-top: 6px;
+  margin-top: 8px;
 }
 
 .heroButtonPrimary {
-  width: 130px;
+  width: 128px;
   height: 44px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill, 999px);
 }
 
 .heroButtonSecondary {
   width: 120px;
   height: 44px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill, 999px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shimmer {
+    animation: none;
+  }
 }

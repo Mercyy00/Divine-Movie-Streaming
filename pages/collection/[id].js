@@ -180,12 +180,12 @@ export default function CollectionPage({ collection: initialCollection }) {
             className={styles.backBtn}
             onClick={() => router.back()}
           >
-            <ChevronLeft size={16} />
+            <ChevronLeft size={16} strokeWidth={1.75} />
             <span>Back</span>
           </button>
 
           <span className={styles.badge}>
-            <Layers size={13} />
+            <Layers size={13} strokeWidth={1.75} />
             <span>Collection</span>
           </span>
 
@@ -197,7 +197,7 @@ export default function CollectionPage({ collection: initialCollection }) {
           <div className={styles.actionsRow}>
             {firstPart && (
               <Link href={`/watch/${firstPart.id}`} className={styles.playBtn}>
-                <Play size={18} fill="currentColor" />
+                <Play size={18} strokeWidth={1.75} fill="currentColor" />
                 <span>Play Saga</span>
               </Link>
             )}
@@ -208,7 +208,7 @@ export default function CollectionPage({ collection: initialCollection }) {
               aria-pressed={allSaved}
               onClick={handleToggleAllWatchlist}
             >
-              {allSaved ? <Check size={17} /> : <Plus size={17} />}
+              {allSaved ? <Check size={17} strokeWidth={1.75} /> : <Plus size={17} strokeWidth={1.75} />}
               <span>{allSaved ? "In Watchlist" : "Save All to Watchlist"}</span>
             </button>
 
@@ -218,7 +218,7 @@ export default function CollectionPage({ collection: initialCollection }) {
               onClick={handleShare}
               title="Share collection"
             >
-              <Share2 size={16} />
+              <Share2 size={16} strokeWidth={1.75} />
               <span>Share</span>
             </button>
           </div>
@@ -261,20 +261,20 @@ export default function CollectionPage({ collection: initialCollection }) {
                       {film.year && <span>{film.year}</span>}
                       {runtime && (
                         <>
-                          <span className={styles.dot}>•</span>
+                          <span className={styles.dot}>·</span>
                           <span>{runtime}</span>
                         </>
                       )}
                       {film.rating > 0 && (
                         <>
-                          <span className={styles.dot}>•</span>
+                          <span className={styles.dot}>·</span>
                           <span className={styles.rating}>★ {Number(film.rating).toFixed(1)}</span>
                         </>
                       )}
                       {isFuture && (
                         <>
-                          <span className={styles.dot}>•</span>
-                          <span style={{ color: "#4ade80", fontWeight: 600 }}>Upcoming</span>
+                          <span className={styles.dot}>·</span>
+                          <span style={{ color: "rgba(255, 255, 255, 0.85)", fontWeight: 600 }}>Upcoming</span>
                         </>
                       )}
                     </div>
@@ -290,12 +290,12 @@ export default function CollectionPage({ collection: initialCollection }) {
                       href={`/watch/${film.id}`}
                       className={`${styles.itemBtn} ${styles.itemBtnPrimary}`}
                     >
-                      <Play size={15} fill="currentColor" />
+                      <Play size={15} strokeWidth={1.75} fill="currentColor" />
                       <span>Play</span>
                     </Link>
 
                     <Link href={`/title/${film.id}`} className={styles.itemBtn}>
-                      <Film size={15} />
+                      <Film size={15} strokeWidth={1.75} />
                       <span>Details</span>
                     </Link>
 
@@ -305,7 +305,7 @@ export default function CollectionPage({ collection: initialCollection }) {
                       aria-pressed={isSaved}
                       onClick={(e) => handleToggleSingle(e, film)}
                     >
-                      {isSaved ? <Check size={14} /> : <Plus size={14} />}
+                      {isSaved ? <Check size={14} strokeWidth={1.75} /> : <Plus size={14} strokeWidth={1.75} />}
                       <span>{isSaved ? "Saved" : "Watchlist"}</span>
                     </button>
                   </div>

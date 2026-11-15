@@ -18,45 +18,53 @@
 .filterTab {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 7px 16px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  color: var(--text-dim);
-  font-size: 13px;
-  font-weight: 600;
+  gap: 8px;
+  height: var(--ctl-h, 38px);
+  padding: 0 16px;
+  border-radius: var(--radius-pill, 999px);
+  background: var(--g-fill);
+  backdrop-filter: var(--g-blur);
+  -webkit-backdrop-filter: var(--g-blur);
+  box-shadow: var(--g-edge);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 13.5px;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: background 0.2s cubic-bezier(0.22, 1, 0.36, 1), color 0.2s ease, border-color 0.2s ease;
 }
 
 .filterTab:hover {
-  background: rgba(255, 255, 255, 0.09);
+  background: var(--g-fill-hover);
   color: #ffffff;
-  border-color: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.24);
 }
 
 .filterActive {
-  background: #ffffff !important;
-  color: #0a0a0a !important;
-  border-color: #ffffff !important;
-  font-weight: 700;
-  box-shadow: 0 4px 16px rgba(255, 255, 255, 0.12);
+  background: #ffffff;
+  color: var(--on-accent, #0A0807);
+  border-color: #ffffff;
+  font-weight: 600;
+}
+
+.filterActive:hover {
+  background: rgba(255, 246, 236, 0.92);
+  color: var(--on-accent, #0A0807);
 }
 
 .filterCount {
   display: inline-block;
   padding: 1px 7px;
   border-radius: 999px;
-  font-size: 11px;
-  font-weight: 700;
-  background: rgba(255, 255, 255, 0.12);
+  font-size: 12px;
+  font-weight: 600;
+  background: rgba(255, 235, 210, 0.12);
   color: inherit;
 }
 
 .filterActive .filterCount {
-  background: rgba(0, 0, 0, 0.14);
-  color: #000000;
+  background: rgba(10, 8, 7, 0.12);
+  color: var(--on-accent, #0A0807);
 }
 
 /* Day Navigation Ribbon */
@@ -77,38 +85,44 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 14px;
+  height: 36px;
+  padding: 0 14px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  color: var(--text-dim);
-  font-size: 12.5px;
-  font-weight: 600;
+  background: var(--g-fill);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
-  transition: all 0.18s ease;
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
 }
 
 .dayTab:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--g-fill-hover);
   color: #ffffff;
-  border-color: rgba(255, 255, 255, 0.18);
-}
-
-.dayTabActive {
-  background: rgba(255, 255, 255, 0.18) !important;
-  border-color: rgba(255, 255, 255, 0.4) !important;
-  color: #ffffff !important;
-  font-weight: 700;
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 .dayTabToday {
-  border-color: rgba(255, 122, 48, 0.4);
-  color: #ff9d66;
+  border-color: rgba(255, 255, 255, 0.24);
+  color: #ffffff;
+}
+
+.dayTabActive {
+  background: #ffffff;
+  border-color: #ffffff;
+  color: var(--on-accent, #0A0807);
+  font-weight: 600;
+}
+
+.dayTabActive:hover {
+  background: rgba(255, 246, 236, 0.92);
+  color: var(--on-accent, #0A0807);
 }
 
 .dayTabCount {
-  font-size: 10.5px;
+  font-size: 12px;
   opacity: 0.75;
   font-variant-numeric: tabular-nums;
 }
@@ -147,22 +161,20 @@
 .dayName {
   margin: 0;
   font-size: 18px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: -0.02em;
   color: #ffffff;
 }
 
 .todayPill {
   display: inline-block;
-  padding: 2px 8px;
+  padding: 2px 10px;
   border-radius: 999px;
-  font-size: 10.5px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  background: var(--brand-amber, #ff7a30);
-  color: #ffffff;
-  box-shadow: 0 2px 10px rgba(255, 122, 48, 0.35);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  background: #ffffff;
+  color: var(--on-accent, #0A0807);
 }
 
 .dayItemCount {
@@ -200,29 +212,31 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.035);
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  padding: 12px;
+  border-radius: var(--radius-card, 16px);
+  background: var(--g-fill);
+  backdrop-filter: var(--g-blur);
+  -webkit-backdrop-filter: var(--g-blur);
+  box-shadow: var(--g-edge);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   text-decoration: none;
   color: inherit;
-  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: background 0.2s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.2s ease, transform 0.2s ease;
   position: relative;
   overflow: hidden;
 }
 
 .card:hover {
-  background: rgba(255, 255, 255, 0.075);
-  border-color: rgba(255, 255, 255, 0.18);
+  background: var(--g-fill-hover);
+  border-color: rgba(255, 255, 255, 0.22);
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px -6px rgba(0, 0, 0, 0.5);
 }
 
 /* Small Poster Thumbnail (2:3 aspect ratio) */
 .posterWrapper {
-  width: 54px;
-  height: 78px;
-  border-radius: 8px;
+  width: 56px;
+  height: 82px;
+  border-radius: 10px;
   overflow: hidden;
   position: relative;
   flex-shrink: 0;
@@ -238,21 +252,21 @@
 }
 
 .card:hover .posterImg {
-  transform: scale(1.05);
+  transform: scale(1.04);
 }
 
 .posterRating {
   position: absolute;
-  bottom: 3px;
-  right: 3px;
-  font-size: 9.5px;
-  font-weight: 700;
-  padding: 1px 4px;
-  border-radius: 4px;
-  background: rgba(0, 0, 0, 0.78);
+  bottom: 4px;
+  right: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 6px;
+  background: rgba(10, 8, 7, 0.86);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
-  color: #ffb830;
+  color: var(--text, #FFF6EC);
   line-height: 1.2;
 }
 
@@ -270,7 +284,7 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 6px;
+  gap: 8px;
 }
 
 .cardTitle {
@@ -292,21 +306,20 @@
 /* Episode Badges */
 .epBadge {
   display: inline-block;
-  font-size: 10px;
-  font-weight: 700;
-  padding: 2px 6px;
-  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
   background: rgba(255, 255, 255, 0.12);
   color: #ffffff;
   white-space: nowrap;
   flex-shrink: 0;
-  letter-spacing: 0.02em;
 }
 
 .epBadgeAnime {
-  background: rgba(255, 122, 48, 0.2);
-  color: #ff9d66;
-  border: 1px solid rgba(255, 122, 48, 0.32);
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .cardMeta {
@@ -316,7 +329,7 @@
 }
 
 .serviceTag {
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 500;
   color: var(--text-dim);
   text-transform: capitalize;
@@ -334,57 +347,54 @@
 }
 
 .remindBtnSmall {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: var(--text-dim, rgba(255, 255, 255, 0.72));
-  border-radius: 9999px;
+  background: var(--g-fill);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.85);
+  border-radius: 999px;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  font-size: 11px;
-  font-weight: 600;
-  padding: 3px 10px;
-  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  gap: 6px;
+  min-height: 34px;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 0 12px;
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
 }
 
 .remindBtnSmall:hover {
   color: #ffffff;
-  background: rgba(255, 255, 255, 0.14);
+  background: var(--g-fill-hover);
   border-color: rgba(255, 255, 255, 0.25);
-}
-
-.remindBtnActive {
-  background: rgba(74, 222, 128, 0.16) !important;
-  color: #4ade80 !important;
-  border-color: rgba(74, 222, 128, 0.38) !important;
-  box-shadow: 0 0 12px rgba(74, 222, 128, 0.18);
-}
-
-.remindBtnActive:hover {
-  background: rgba(74, 222, 128, 0.24) !important;
-  border-color: rgba(74, 222, 128, 0.55) !important;
 }
 
 .icsDownloadBtn {
   background: transparent;
   border: 1px solid transparent;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.56);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 3px;
-  font-size: 10.5px;
+  gap: 4px;
+  min-height: 34px;
+  font-size: 12px;
   font-weight: 500;
-  padding: 2px 6px;
-  border-radius: 6px;
-  transition: all 0.15s ease;
+  padding: 0 8px;
+  border-radius: 999px;
+  transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+@media (hover: none), (max-width: 768px) {
+  .remindBtnSmall,
+  .icsDownloadBtn {
+    min-height: 44px;
+  }
 }
 
 .icsDownloadBtn:hover {
-  color: rgba(255, 255, 255, 0.85);
-  background: rgba(255, 255, 255, 0.07);
-  border-color: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.14);
 }
 
 .soonActions {
@@ -407,7 +417,7 @@
 .h2 {
   margin: 48px 0 16px;
   font-size: 22px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: -0.02em;
   color: #ffffff;
 }
@@ -418,6 +428,7 @@
   gap: 8px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   padding-top: 12px;
+  padding-bottom: 48px;
 }
 
 .soonRow {
@@ -425,23 +436,24 @@
   grid-template-columns: 46px 120px minmax(0, 1fr) 140px 50px auto;
   align-items: center;
   gap: 14px;
-  padding: 10px 14px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  transition: all 0.2s ease;
+  padding: 12px 14px;
+  border-radius: var(--radius-card, 16px);
+  background: var(--g-fill);
+  backdrop-filter: var(--g-blur);
+  -webkit-backdrop-filter: var(--g-blur);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: background 0.2s ease, border-color 0.2s ease;
 }
 
 .soonRow:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.12);
-  transform: translateX(2px);
+  background: var(--g-fill-hover);
+  border-color: rgba(255, 255, 255, 0.18);
 }
 
 .soonPoster {
   width: 44px;
   height: 62px;
-  border-radius: 6px;
+  border-radius: 8px;
   overflow: hidden;
   background: rgba(255, 255, 255, 0.05);
   flex-shrink: 0;
@@ -456,7 +468,7 @@
 
 .soonDate {
   font-size: 13.5px;
-  font-weight: 700;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: var(--text-soft);
   white-space: nowrap;
@@ -464,7 +476,7 @@
 
 .soonTitleLink {
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 600;
   color: #ffffff;
   text-decoration: none;
   white-space: nowrap;
@@ -488,54 +500,59 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 14px;
+  height: var(--ctl-h, 38px);
+  padding: 0 14px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--g-fill);
+  backdrop-filter: var(--g-blur);
   border: 1px solid rgba(255, 255, 255, 0.14);
   color: #ffffff;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 12.5px;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
   white-space: nowrap;
 }
 
 .remindBtn:hover {
-  background: rgba(255, 255, 255, 0.16);
-  border-color: rgba(255, 255, 255, 0.3);
-  transform: translateY(-1px);
+  background: var(--g-fill-hover);
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+.remindBtnActive {
+  background: #ffffff;
+  color: var(--on-accent, #0A0807);
+  border-color: #ffffff;
+  font-weight: 600;
+}
+
+.remindBtnActive:hover {
+  background: rgba(255, 246, 236, 0.92);
+  color: var(--on-accent, #0A0807);
+  border-color: rgba(255, 246, 236, 0.92);
 }
 
 /* Toast Notice */
 .toastNotice {
   position: fixed;
   bottom: 28px;
-  right: 28px;
-  background: rgba(20, 24, 34, 0.95);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  color: #ffffff;
-  padding: 12px 20px;
-  border-radius: 12px;
-  font-size: 14px;
-  font-weight: 600;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(20, 14, 10, 0.94);
+  backdrop-filter: var(--g-blur);
+  -webkit-backdrop-filter: var(--g-blur);
+  border: 1px solid var(--hairline-strong, rgba(255, 214, 170, 0.16));
+  box-shadow: var(--g-edge), 0 12px 32px rgba(0, 0, 0, 0.55);
+  color: var(--text, #FFF6EC);
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
   z-index: 9999;
   display: flex;
   align-items: center;
-  animation: fadeInToast 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-@keyframes fadeInToast {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 /* Responsive Adjustments */
@@ -545,6 +562,15 @@
   }
   .soonGenres {
     display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .soonList {
+    padding-bottom: 96px;
+  }
+  .toastNotice {
+    bottom: calc(92px + env(safe-area-inset-bottom, 0px));
   }
 }
 

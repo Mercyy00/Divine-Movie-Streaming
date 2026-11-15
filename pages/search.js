@@ -219,10 +219,10 @@ export default function SearchPage() {
               onClick={clearInput}
               aria-label="Clear search"
             >
-              <X size={18} />
+              <X size={18} strokeWidth={1.75} />
             </button>
           )}
-          <SearchIcon size={20} className={styles.searchIcon} />
+          <SearchIcon size={20} strokeWidth={1.75} className={styles.searchIcon} />
         </form>
 
         {/* Filter Tabs: All | Movies | Series | Anime | People */}
@@ -315,7 +315,7 @@ export default function SearchPage() {
                               height: "100%",
                             }}
                           >
-                            <User size={44} color="rgba(255, 255, 255, 0.4)" />
+                            <User size={44} strokeWidth={1.75} color="rgba(255, 255, 255, 0.4)" />
                           </div>
                         )}
                       </div>

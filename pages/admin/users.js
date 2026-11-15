@@ -117,7 +117,7 @@ export default function AdminUsersPage({ authorized = false, signedInEmail = nul
             backdropFilter: "var(--g-blur, blur(24px))",
           }}
         >
-          <ShieldAlert size={44} color="#f5c04a" style={{ margin: "0 auto 14px" }} />
+          <ShieldAlert size={44} color="var(--amber, #FFC84A)" style={{ margin: "0 auto 14px" }} />
           <h1 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 10px" }}>Administrator Access Required</h1>
           {activeEmail ? (
             <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 14, lineHeight: 1.55, margin: "0 0 22px" }}>
@@ -140,7 +140,7 @@ export default function AdminUsersPage({ authorized = false, signedInEmail = nul
                   padding: "0 20px",
                   borderRadius: 999,
                   background: "#ffffff",
-                  color: "#000000",
+                  color: "var(--on-accent, #0A0807)",
                   fontWeight: 700,
                   fontSize: 14,
                   textDecoration: "none",
@@ -194,7 +194,7 @@ export default function AdminUsersPage({ authorized = false, signedInEmail = nul
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16, marginBottom: 28 }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <Shield size={24} color="var(--primary, #00e599)" />
+              <Shield size={24} color="var(--accent, #FF8A2B)" />
               <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0 }}>User Administration</h1>
             </div>
             <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 14, margin: "6px 0 0" }}>
@@ -211,8 +211,8 @@ export default function AdminUsersPage({ authorized = false, signedInEmail = nul
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 style={{
-                  background: "var(--surface-2, #14171d)",
-                  border: "1px solid rgba(255,255,255,0.12)",
+                  background: "var(--surface-2, #17110E)",
+                  border: "1px solid var(--hairline, rgba(255, 214, 170, 0.12))",
                   borderRadius: 8,
                   padding: "8px 14px 8px 34px",
                   fontSize: 13,
@@ -228,8 +228,8 @@ export default function AdminUsersPage({ authorized = false, signedInEmail = nul
         {/* User Table */}
         <div
           style={{
-            background: "var(--surface-1, #0f1115)",
-            border: "1px solid rgba(255,255,255,0.08)",
+            background: "var(--surface-1, #100C0A)",
+            border: "1px solid var(--hairline, rgba(255, 214, 170, 0.10))",
             borderRadius: 14,
             overflow: "hidden",
           }}
@@ -269,7 +269,7 @@ export default function AdminUsersPage({ authorized = false, signedInEmail = nul
                                 width: 32,
                                 height: 32,
                                 borderRadius: "50%",
-                                background: "var(--surface-3, #222)",
+                                background: "var(--surface-3, #1F1712)",
                                 overflow: "hidden",
                                 display: "grid",
                                 placeItems: "center",
@@ -305,8 +305,8 @@ export default function AdminUsersPage({ authorized = false, signedInEmail = nul
                               borderRadius: 6,
                               fontSize: 11,
                               fontWeight: 700,
-                              background: isAdmin ? "rgba(0, 229, 153, 0.15)" : "rgba(255,255,255,0.06)",
-                              color: isAdmin ? "var(--primary, #00e599)" : "rgba(255,255,255,0.8)",
+                              background: isAdmin ? "var(--accent-soft, rgba(255, 138, 43, 0.16))" : "rgba(255, 235, 210, 0.06)",
+                              color: isAdmin ? "var(--accent, #FF8A2B)" : "var(--text-dim, rgba(255, 240, 224, 0.8))",
                             }}
                           >
                             {isAdmin && <ShieldCheck size={12} />}
@@ -325,8 +325,8 @@ export default function AdminUsersPage({ authorized = false, signedInEmail = nul
                               borderRadius: 6,
                               fontSize: 11,
                               fontWeight: 700,
-                              background: isBanned ? "rgba(229, 62, 62, 0.15)" : "rgba(72, 187, 120, 0.15)",
-                              color: isBanned ? "#fc8181" : "#68d391",
+                              background: isBanned ? "var(--danger-soft, rgba(255, 90, 77, 0.14))" : "var(--success-soft, rgba(91, 185, 140, 0.14))",
+                              color: isBanned ? "var(--danger-lift, #FF7B70)" : "var(--success, #5BB98C)",
                             }}
                           >
                             {isBanned ? "Banned" : "Active"}
@@ -342,8 +342,8 @@ export default function AdminUsersPage({ authorized = false, signedInEmail = nul
                                 style={{
                                   padding: "6px 10px",
                                   borderRadius: 6,
-                                  background: "var(--surface-2, #1a1d24)",
-                                  border: "1px solid rgba(255,255,255,0.1)",
+                                  background: "var(--surface-2, #17110E)",
+                                  border: "1px solid var(--hairline, rgba(255, 214, 170, 0.10))",
                                   color: "#fff",
                                   fontSize: 12,
                                   cursor: "pointer",
@@ -360,9 +360,9 @@ export default function AdminUsersPage({ authorized = false, signedInEmail = nul
                                 style={{
                                   padding: "6px 10px",
                                   borderRadius: 6,
-                                  background: isBanned ? "rgba(72, 187, 120, 0.12)" : "rgba(229, 62, 62, 0.12)",
-                                  border: "1px solid " + (isBanned ? "rgba(72, 187, 120, 0.3)" : "rgba(229, 62, 62, 0.3)"),
-                                  color: isBanned ? "#68d391" : "#fc8181",
+                                  background: isBanned ? "var(--success-soft, rgba(91, 185, 140, 0.14))" : "var(--danger-soft, rgba(255, 90, 77, 0.14))",
+                                  border: "1px solid " + (isBanned ? "rgba(91, 185, 140, 0.3)" : "rgba(255, 90, 77, 0.3)"),
+                                  color: isBanned ? "var(--success, #5BB98C)" : "var(--danger-lift, #FF7B70)",
                                   fontSize: 12,
                                   cursor: "pointer",
                                 }}
@@ -394,7 +394,7 @@ export default function AdminUsersPage({ authorized = false, signedInEmail = nul
         </div>
       </div>
 
-      {toast && <div style={{ position: "fixed", bottom: 24, right: 24, background: "#1a1d24", color: "#fff", padding: "10px 18px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.15)", fontSize: 13, zIndex: 9999 }}>{toast}</div>}
+      {toast && <div style={{ position: "fixed", bottom: 24, right: 24, background: "var(--surface-3, #1F1712)", color: "var(--text, #FFF6EC)", padding: "10px 18px", borderRadius: 8, border: "1px solid var(--hairline-strong, rgba(255, 214, 170, 0.18))", fontSize: 13, zIndex: 9999 }}>{toast}</div>}
     </Layout>
   );
 }

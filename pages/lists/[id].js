@@ -161,21 +161,10 @@ export default function CustomListPage({ cardMap = {} }) {
       title={listData ? listData.name : "Custom List"}
       description={listData?.description || "Curated list on DIVINE."}
     >
-      <div className="pageInner" style={{ padding: "40px var(--page-pad) 80px", maxWidth: "var(--page-max)", margin: "0 auto" }}>
+      <div className="pageInner" style={{ padding: "40px var(--page-pad) 112px", maxWidth: "var(--page-max)", margin: "0 auto" }}>
         {/* Back navigation */}
-        <Link
-          href="/lists"
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-            color: "rgba(255,255,255,0.7)",
-            fontSize: 14,
-            marginBottom: 24,
-            textDecoration: "none",
-          }}
-        >
-          <ChevronLeft size={16} />
+        <Link href="/lists" className={styles.backBtn}>
+          <ChevronLeft size={16} strokeWidth={1.75} />
           <span>All lists</span>
         </Link>
 
@@ -196,7 +185,7 @@ export default function CustomListPage({ cardMap = {} }) {
               }}
             >
               <div>
-                <h1 style={{ fontSize: "clamp(24px, 3vw, 36px)", fontWeight: 800, margin: 0, letterSpacing: -0.5 }}>
+                <h1 style={{ fontSize: "clamp(24px, 3vw, 36px)", fontWeight: 700, margin: 0, letterSpacing: "-0.02em" }}>
                   {listData.name}
                 </h1>
                 {listData.description && (
@@ -206,7 +195,7 @@ export default function CustomListPage({ cardMap = {} }) {
                 )}
                 <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginTop: 12, color: "rgba(255,255,255,0.55)", fontSize: 13 }}>
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                    <User size={14} />
+                    <User size={14} strokeWidth={1.75} />
                     <span>Created by {listData.user?.name || "Community member"}</span>
                   </span>
                   <span>·</span>
@@ -219,7 +208,7 @@ export default function CustomListPage({ cardMap = {} }) {
                   )}
                   <span>·</span>
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                    {listData.isPublic === false ? <Lock size={12} /> : <Globe size={12} />}
+                    {listData.isPublic === false ? <Lock size={12} strokeWidth={1.75} /> : <Globe size={12} strokeWidth={1.75} />}
                     <span>{listData.isPublic === false ? "Private" : "Public"}</span>
                   </span>
                 </div>
@@ -228,21 +217,9 @@ export default function CustomListPage({ cardMap = {} }) {
               <button
                 type="button"
                 onClick={handleShare}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 8,
-                  padding: "10px 18px",
-                  borderRadius: 999,
-                  background: "var(--g-fill, rgba(255,255,255,0.1))",
-                  border: "1px solid var(--g-edge, rgba(255,255,255,0.16))",
-                  color: "#fff",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                }}
+                className={styles.topBtn}
               >
-                <Share2 size={15} />
+                <Share2 size={15} strokeWidth={1.75} />
                 <span>Share list</span>
               </button>
             </div>
@@ -268,7 +245,7 @@ export default function CustomListPage({ cardMap = {} }) {
         )}
       </div>
 
-      {toast && <div className={styles.cardToast}>{toast}</div>}
+      {toast && <div className={styles.toast}>{toast}</div>}
     </Layout>
   );
 }

@@ -90,9 +90,9 @@ export default function WatchParty({ options = [] }) {
             <button type="button" className="btnHero" onClick={create} disabled={!partyEnabled}>
               Open room
             </button>
-            <form onSubmit={join} style={{ display: "flex", gap: 8 }}>
+            <form onSubmit={join} className={styles.joinForm}>
               <input value={joinCode} onChange={(e) => setJoinCode(e.target.value)} placeholder="Room code" aria-label="Room code" maxLength={5}
-                style={{ flex: 1, height: 40, padding: "0 12px", borderRadius: 12, background: "rgba(255,255,255,.07)", border: "1px solid rgba(255,255,255,.12)", color: "#fff", textTransform: "uppercase" }} />
+                className={styles.joinInput} />
               <button type="submit" className="chip" disabled={!partyEnabled}>Join</button>
             </form>
             {!partyEnabled && <p className={styles.hint}>Realtime is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to share rooms.</p>}
@@ -101,7 +101,7 @@ export default function WatchParty({ options = [] }) {
                 <small>Room code · {people.length} watching</small>
                 <b>{room.code}</b>
                 <button type="button" className="chip" onClick={copy}>
-                  {copied ? <Check size={16} /> : <Copy size={16} />}
+                  {copied ? <Check size={16} strokeWidth={1.75} /> : <Copy size={16} strokeWidth={1.75} />}
                   {copied ? "Copied" : "Copy invite link"}
                 </button>
               </div>
@@ -122,7 +122,7 @@ export default function WatchParty({ options = [] }) {
                 <form className={styles.form} onSubmit={send}>
                   <input id="party-msg" value={text} onChange={(e) => setText(e.target.value)} placeholder="Say something" aria-label="Message" autoComplete="off" />
                   <button type="submit" className={styles.send} aria-label="Send">
-                    <Send size={18} />
+                    <Send size={18} strokeWidth={1.75} />
                   </button>
                 </form>
               </>

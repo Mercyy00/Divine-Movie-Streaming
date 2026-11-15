@@ -109,7 +109,7 @@ export default function TileRow({ title, items = [], param = "service", classNam
             disabled={edge.start}
             aria-label="Scroll left"
           >
-            <ChevronLeft size={18} strokeWidth={2.6} />
+            <ChevronLeft size={18} strokeWidth={1.75} />
           </button>
           <button
             type="button"
@@ -118,7 +118,7 @@ export default function TileRow({ title, items = [], param = "service", classNam
             disabled={edge.end}
             aria-label="Scroll right"
           >
-            <ChevronRight size={18} strokeWidth={2.6} />
+            <ChevronRight size={18} strokeWidth={1.75} />
           </button>
         </div>
       </header>

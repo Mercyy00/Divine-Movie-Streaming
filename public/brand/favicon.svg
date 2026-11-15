@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="divine-leaf-grad" x1="12" y1="8" x2="52" y2="56" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFC84A" />
+      <stop offset="52%" stop-color="#FF8A2B" />
+      <stop offset="100%" stop-color="#D8341C" />
+    </linearGradient>
+    <radialGradient id="divine-badge-glow" cx="50%" cy="44%" r="54%">
+      <stop offset="0%" stop-color="#FF8A2B" stop-opacity="0.24" />
+      <stop offset="100%" stop-color="#0A0807" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+  <rect width="64" height="64" rx="16" fill="#0A0807" />
+  <rect width="64" height="64" rx="16" fill="url(#divine-badge-glow)" />
+  <rect x="1" y="1" width="62" height="62" rx="15" stroke="#FFD6AA" stroke-opacity="0.16" stroke-width="1.5" />
+  <path
+    d="M32 10.5L35.4 20.3L41.6 18.1L38.9 27.6L48.4 24.4L46.1 30.8L51.5 34.1L42.8 39.2L44.1 43.8L33.5 42.3V53.5H30.5V42.3L19.9 43.8L21.2 39.2L12.5 34.1L17.9 30.8L15.6 24.4L25.1 27.6L22.4 18.1L28.6 20.3L32 10.5Z"
+    fill="url(#divine-leaf-grad)"
+  />
+</svg>

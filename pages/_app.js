@@ -4,6 +4,7 @@ import { useRouter } from "next/router";
 import { SessionProvider } from "next-auth/react";
 import SyncManager from "../components/SyncManager";
 import LoadingScreen from "../components/LoadingScreen";
+import IntroSplash from "../components/IntroSplash";
 import { Bebas_Neue } from "next/font/google";
 import { useSettings } from "../lib/store";
 import "../lib/env";
@@ -21,6 +22,7 @@ export default function App({ Component, pageProps }) {
   const router = useRouter();
   const [settings] = useSettings();
   const [routeLoading, setRouteLoading] = useState(false);
+  const [introPhase, setIntroPhase] = useState("idle");
 
   useEffect(() => {
     let timer = null;
@@ -54,13 +56,19 @@ export default function App({ Component, pageProps }) {
       const themeMode = settings.themeMode || (theme === "performance" ? "performance" : "default");
       document.documentElement.dataset.themeMode = themeMode;
 
+      const accent = settings.accent || "autumn";
+      document.documentElement.dataset.accent = accent;
+      try {
+        window.localStorage.setItem("divine:accent", accent);
+      } catch {}
+
       const intensity =
         settings.showBackground !== false && themeMode !== "performance"
           ? (settings.bgIntensity ?? 85) / 100
           : 0;
       document.documentElement.style.setProperty("--mood-bright", String(intensity));
     }
-  }, [settings.theme, settings.themeMode, settings.bgIntensity, settings.showBackground]);
+  }, [settings.theme, settings.themeMode, settings.accent, settings.bgIntensity, settings.showBackground]);
 
   // Buttery-smooth inertial momentum scrolling (Lenis)
   useEffect(() => {
@@ -122,15 +130,25 @@ export default function App({ Component, pageProps }) {
       <Head>
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         <link rel="icon" href="/favicon.ico" sizes="any" />
-        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+        <link rel="icon" href="/brand/favicon.svg" type="image/svg+xml" />
         <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png" />
         <link rel="icon" type="image/png" sizes="64x64" href="/favicon.png" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
       </Head>
       <SessionProvider session={pageProps.session} refetchOnWindowFocus={false}>
+        <IntroSplash onStateChange={setIntroPhase} />
         <SyncManager />
-        {routeLoading && <LoadingScreen fullScreen message="Loading DIVINE…" />}
-        <div key={router.asPath.split("?")[0]} className="pageTransitionWrap">
+        {routeLoading && <LoadingScreen fullScreen message="" />}
+        <div
+          key={router.asPath.split("?")[0]}
+          className={`pageTransitionWrap${
+            introPhase === "playing"
+              ? " introBehind"
+              : introPhase === "exiting"
+              ? " introReveal"
+              : ""
+          }`}
+        >
           <Component {...pageProps} />
         </div>
       </SessionProvider>

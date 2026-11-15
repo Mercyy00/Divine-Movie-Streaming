@@ -612,11 +612,11 @@ export default function Header({ watchTitle = null }) {
       <button
         type="button"
         role="menuitem"
-        className={`${styles.menuItem} ${styles.menuBad}`}
+        className={`${styles.menuItem} ${signedIn ? styles.menuBad : ""}`}
         onClick={() => (signedIn ? signOut({ callbackUrl: "/" }) : router.push("/auth/signin"))}
       >
         <span style={{ display: "inline-flex", flex: "0 0 auto", transform: "none" }}>
-          {signedIn ? <LogOut size={17} strokeWidth={1.8} /> : <LogIn size={17} strokeWidth={1.8} />}
+          {signedIn ? <LogOut size={17} strokeWidth={1.75} /> : <LogIn size={17} strokeWidth={1.75} />}
         </span>
         {signedIn ? "Log out" : "Sign in"}
       </button>
@@ -665,7 +665,7 @@ export default function Header({ watchTitle = null }) {
       </Link>
       {session?.user?.role === "ADMIN" && (
         <Link href="/admin/users" role="menuitem" className={styles.menuItem}>
-          <span style={{ display: "inline-flex", flex: "0 0 auto", color: "var(--role-admin, #f5c04a)" }}>
+          <span style={{ display: "inline-flex", flex: "0 0 auto", color: "var(--role-admin, #FFC84A)" }}>
             <Shield size={17} strokeWidth={1.8} />
           </span>
           Admin Dashboard
@@ -914,7 +914,7 @@ export default function Header({ watchTitle = null }) {
               >
                 <span className={styles.linkIcon}>
                   <span style={{ display: "inline-flex", flex: "0 0 auto", transform: "none" }}>
-                    <Icon size={18} strokeWidth={2.4} />
+                    <Icon size={17} strokeWidth={1.75} />
                   </span>
                 </span>
                 {label}
@@ -936,7 +936,7 @@ export default function Header({ watchTitle = null }) {
         <span className={styles.tooltipWrap}>
           <Link href="/watch-party" className={styles.round} aria-label="Chat">
             <span style={{ display: "inline-flex", flex: "0 0 auto", transform: "none" }}>
-              <MessageCircle size={20} strokeWidth={1.8} />
+              <MessageCircle size={19} strokeWidth={1.75} />
             </span>
           </Link>
         </span>
@@ -951,7 +951,7 @@ export default function Header({ watchTitle = null }) {
                 aria-label={unread > 0 ? `Notifications (${unread} unread)` : "Notifications"}
               >
                 <span style={{ display: "inline-flex", flex: "0 0 auto" }}>
-                  <Bell size={20} strokeWidth={1.8} />
+                  <Bell size={19} strokeWidth={1.75} />
                 </span>
                 {unread > 0 && <span className={styles.notifDot} aria-hidden="true" />}
               </span>
@@ -1028,7 +1028,7 @@ export function MobileNav() {
             aria-current={active ? "page" : undefined}
             aria-label={label}
           >
-            <Icon size={20} strokeWidth={2} />
+            <Icon size={19} strokeWidth={1.75} />
             {active && <span>{label}</span>}
           </Link>
         );

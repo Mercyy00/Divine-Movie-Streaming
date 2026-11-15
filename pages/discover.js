@@ -229,7 +229,7 @@ export default function Discover() {
 
   return (
     <Layout title="Discover" description="Browse the catalogue by format, service and studio dynamically via TMDB.">
-      <div className="pageInner">
+      <div className="pageInner" style={{ paddingBottom: 96 }}>
         <PageHead
           title="Discover"
           sub={crumbs.length ? crumbs.join(" · ") : "Filter the whole catalogue by format, service and studio directly from TMDB."}
@@ -295,7 +295,7 @@ export default function Discover() {
                 onClick={handleResetAll}
                 aria-label="Reset all discover filters"
               >
-                <RotateCcw size={13.5} strokeWidth={2.2} />
+                <RotateCcw size={14} strokeWidth={1.75} />
                 <span>Reset</span>
               </button>
             )}

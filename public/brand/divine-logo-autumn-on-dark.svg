@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 212 48" fill="none">
+  <defs>
+    <linearGradient id="divine-logo-leaf" x1="8" y1="5" x2="38" y2="43" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFC84A" />
+      <stop offset="50%" stop-color="#FF8A2B" />
+      <stop offset="100%" stop-color="#D8341C" />
+    </linearGradient>
+    <radialGradient id="divine-logo-aura" cx="50%" cy="48%" r="50%">
+      <stop offset="0%" stop-color="#FF8A2B" stop-opacity="0.32" />
+      <stop offset="100%" stop-color="#FF8A2B" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+  <circle cx="24" cy="24" r="22" fill="url(#divine-logo-aura)" />
+  <path
+    d="M24 6.5L26.8 14.8L32.1 12.9L29.8 20.9L37.8 18.2L35.9 23.6L40.5 26.4L33.1 30.7L34.2 34.6L25.3 33.3V42H22.7V33.3L13.8 34.6L14.9 30.7L7.5 26.4L12.1 23.6L10.2 18.2L18.2 20.9L15.9 12.9L21.2 14.8L24 6.5Z"
+    fill="url(#divine-logo-leaf)"
+  />
+  <text
+    x="52"
+    y="32"
+    fill="#FFF6EC"
+    font-family="'NS Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif"
+    font-size="24"
+    font-weight="700"
+    letter-spacing="4.2"
+  >
+    DIVINE
+  </text>
+</svg>

@@ -11,46 +11,28 @@
 .panel {
   position: absolute;
   z-index: var(--z-popover, 300);
-  top: calc(100% + 10px);
+  top: calc(100% + 12px);
   right: 0;
-  min-width: 260px;
-  padding: 10px;
+  min-width: 248px;
+  padding: 8px;
   border-radius: var(--radius-panel, 20px);
-  background: rgba(14, 16, 24, 0.84);
-  backdrop-filter: var(--g-blur, blur(28px) saturate(190%));
-  -webkit-backdrop-filter: var(--g-blur, blur(28px) saturate(190%));
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: linear-gradient(180deg, rgba(255, 235, 210, 0.08) 0%, rgba(255, 235, 210, 0.02) 100%), rgba(20, 14, 10, 0.94);
+  backdrop-filter: var(--g-blur, blur(28px) saturate(170%) brightness(1.08));
+  -webkit-backdrop-filter: var(--g-blur, blur(28px) saturate(170%) brightness(1.08));
+  border: 1px solid var(--hairline-strong, rgba(255, 214, 170, 0.16));
   box-shadow:
-    inset 1px 1px 1px rgba(255, 255, 255, 0.34),
-    inset -1px -1px 1px rgba(255, 255, 255, 0.08),
-    0 24px 60px -10px rgba(0, 0, 0, 0.85);
+    inset 0 1px 0 rgba(255, 230, 200, 0.18),
+    0 24px 56px -12px rgba(0, 0, 0, 0.72);
   transform-origin: top right;
-  animation: popIn 0.22s var(--ease-out) backwards;
+  animation: popIn 0.2s var(--ease-out) backwards;
   overflow: hidden;
-}
-
-.panel::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  filter: blur(8px);
-  background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.14) 0%,
-    transparent 30%,
-    transparent 70%,
-    rgba(255, 255, 255, 0.06) 100%
-  );
-  pointer-events: none;
-  z-index: 0;
 }
 
 @media (prefers-reduced-transparency: reduce) {
   .panel {
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
-    background: rgba(14, 16, 24, 0.98);
+    background: rgba(20, 14, 10, 0.98);
   }
 }
 

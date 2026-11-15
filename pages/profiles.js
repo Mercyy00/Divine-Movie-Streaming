@@ -146,10 +146,10 @@ export default function Profiles() {
           <Link href="/" aria-label="Home" style={{ display: "inline-block", textDecoration: "none" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/logo.png"
+              src="/brand/divine-logo-autumn-on-dark.svg"
               alt="DIVINE"
               style={{
-                height: 48,
+                height: 44,
                 width: "auto",
                 display: "block",
                 filter: "drop-shadow(0 4px 12px rgba(0, 0, 0, 0.7))",
@@ -207,7 +207,7 @@ export default function Profiles() {
                   {/* Pencil overlay in manage mode */}
                   {managing && (
                     <div className={styles.editOverlay}>
-                      <Pencil size={24} />
+                      <Pencil size={24} strokeWidth={1.75} />
                     </div>
                   )}
                 </div>
@@ -224,7 +224,7 @@ export default function Profiles() {
             aria-label="Add profile"
           >
             <div className={styles.addCircle}>
-              <Plus size={36} strokeWidth={2} />
+              <Plus size={34} strokeWidth={1.75} />
             </div>
             <span className={styles.profileName}>Add profile</span>
           </button>
@@ -239,12 +239,12 @@ export default function Profiles() {
           >
             {managing ? (
               <>
-                <Check size={16} />
+                <Check size={16} strokeWidth={1.75} />
                 <span>Done</span>
               </>
             ) : (
               <>
-                <Pencil size={15} />
+                <Pencil size={15} strokeWidth={1.75} />
                 <span>Manage profiles</span>
               </>
             )}

@@ -26,7 +26,7 @@ export default function ForgotPassword() {
       if (!res.ok) {
         setError(data.error || "Failed to submit request.");
       } else {
-        setMessage(data.message || "Reset link sent! Please check your email.");
+        setMessage(data.message || "Reset link sent. Please check your email.");
       }
     } catch {
       setBusy(false);
@@ -41,7 +41,7 @@ export default function ForgotPassword() {
           <h1 className={styles.title}>Reset Password</h1>
           <p className={styles.sub}>Enter your account email to receive a password reset link.</p>
           {error && <p className={styles.error} role="alert">{error}</p>}
-          {message && <p style={{ color: "#4ade80", fontSize: "14px", margin: "0 0 12px" }}>{message}</p>}
+          {message && <p className={styles.success}>{message}</p>}
           <label className={styles.field}>
             Email address
             <input

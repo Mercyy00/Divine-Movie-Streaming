@@ -60,11 +60,11 @@ export default function ResetPassword() {
           <p className={styles.sub}>Choose a strong password with at least 8 characters.</p>
           {error && <p className={styles.error} role="alert">{error}</p>}
           {success ? (
-            <div>
-              <p style={{ color: "#4ade80", fontSize: "14px", margin: "0 0 16px" }}>
-                Your password has been reset successfully!
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <p className={styles.success}>
+                Your password has been reset.
               </p>
-              <Link href="/auth/signin" className={styles.btn} style={{ display: "block", textAlign: "center", textDecoration: "none" }}>
+              <Link href="/auth/signin" className={styles.btn} style={{ display: "inline-grid", placeItems: "center", width: "100%", textDecoration: "none" }}>
                 Proceed to Sign In
               </Link>
             </div>

@@ -2,8 +2,8 @@
 
 .section {
   padding: 0 var(--page-pad);
-  margin-top: 40px;
-  animation: riseIn 0.6s var(--ease-out) backwards;
+  margin-top: 48px;
+  animation: riseIn 0.55s var(--ease-out) backwards;
   position: relative;
 }
 
@@ -11,16 +11,16 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
-  margin-bottom: 14px;
+  gap: 12px;
+  margin-bottom: 16px;
 }
 
 .title {
   margin: 0;
-  font-size: 23.472px;
-  line-height: 28.1664px;
-  font-weight: 700;
-  letter-spacing: -0.35208px;
+  font-size: 22px;
+  line-height: 1.25;
+  font-weight: 600;
+  letter-spacing: -0.02em;
   color: var(--text-primary, #ffffff);
 }
 
@@ -28,7 +28,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  opacity: 0.78;
+  opacity: 0.85;
   transition: opacity 0.2s var(--ease-out, ease);
 }
 
@@ -38,25 +38,33 @@
 }
 
 .arrowBtn {
-  width: 34px;
-  height: 34px;
+  width: var(--ctl-h, 38px);
+  height: var(--ctl-h, 38px);
   display: grid;
   place-items: center;
   border-radius: var(--pager-arrow-radius, 999px);
   background: var(--g-fill);
   backdrop-filter: var(--g-blur);
   -webkit-backdrop-filter: var(--g-blur);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid var(--hairline, rgba(255, 214, 170, 0.12));
   box-shadow: var(--g-edge);
-  color: #ffffff;
+  color: var(--text, #FFF6EC);
   cursor: pointer;
-  transition: background 0.2s ease, opacity 0.2s ease, transform 0.2s var(--ease-out, ease);
+  transition: background-color 0.18s var(--ease-out), border-color 0.18s var(--ease-out), box-shadow 0.18s var(--ease-out), transform 0.16s var(--ease-out);
+}
+
+:global(html[data-theme-mode="performance"]) .arrowBtn {
+  border-radius: 8px;
 }
 
 .arrowBtn:hover:not(:disabled) {
   background: var(--g-fill-hover);
-  border-color: rgba(255, 255, 255, 0.28);
-  transform: scale(1.05);
+  border-color: var(--hairline-strong, rgba(255, 214, 170, 0.24));
+  box-shadow: var(--g-edge-hover);
+}
+
+.arrowBtn:active:not(:disabled) {
+  transform: scale(0.96);
 }
 
 .arrowBtn:disabled {
@@ -74,59 +82,44 @@
   position: absolute;
   top: 0;
   bottom: 0;
-  width: clamp(44px, 7vw, 92px);
+  width: clamp(32px, 5vw, 72px);
   z-index: 10;
   pointer-events: none;
   opacity: 1;
-  transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity 0.24s var(--ease-out);
 }
 
 .fadeLeft {
   left: 0;
   background: linear-gradient(
     to right,
-    var(--bg, #000000) 0%,
-    rgba(7, 9, 14, 0.95) 20%,
-    rgba(7, 9, 14, 0.7) 48%,
-    rgba(7, 9, 14, 0.25) 75%,
+    var(--bg, #0A0807) 0%,
+    rgba(10, 8, 7, 0.85) 34%,
+    rgba(10, 8, 7, 0.35) 70%,
     transparent 100%
   );
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  -webkit-mask-image: linear-gradient(to right, black 0%, rgba(0, 0, 0, 0.8) 35%, rgba(0, 0, 0, 0.25) 75%, transparent 100%);
-  mask-image: linear-gradient(to right, black 0%, rgba(0, 0, 0, 0.8) 35%, rgba(0, 0, 0, 0.25) 75%, transparent 100%);
 }
 
 .fadeRight {
   right: 0;
   background: linear-gradient(
     to left,
-    var(--bg, #000000) 0%,
-    rgba(7, 9, 14, 0.95) 20%,
-    rgba(7, 9, 14, 0.7) 48%,
-    rgba(7, 9, 14, 0.25) 75%,
+    var(--bg, #0A0807) 0%,
+    rgba(10, 8, 7, 0.85) 34%,
+    rgba(10, 8, 7, 0.35) 70%,
     transparent 100%
   );
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  -webkit-mask-image: linear-gradient(to left, black 0%, rgba(0, 0, 0, 0.8) 35%, rgba(0, 0, 0, 0.25) 75%, transparent 100%);
-  mask-image: linear-gradient(to left, black 0%, rgba(0, 0, 0, 0.8) 35%, rgba(0, 0, 0, 0.25) 75%, transparent 100%);
 }
 
 .fadeHidden {
   opacity: 0;
 }
 
-:global(html[data-theme-mode="performance"]) .fade {
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-}
-
 /* Scroller: horizontally scrollable flex row */
 .scroller {
   display: flex;
   gap: 16px;
-  padding: 12px var(--page-pad) 20px;
+  padding: 12px var(--page-pad) 16px;
   overflow-x: auto;
   scroll-snap-type: x proximity;
   scroll-padding-inline: var(--page-pad);
@@ -143,7 +136,7 @@
   display: none;
 }
 
-@media (hover: none) {
+@media (hover: none), (max-width: 640px) {
   .arrows {
     display: none;
   }
@@ -151,7 +144,7 @@
 
 @media (max-width: 768px) {
   .section {
-    margin-top: 28px;
+    margin-top: 32px;
   }
 
   .title {

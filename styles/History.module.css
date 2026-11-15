@@ -1,5 +1,5 @@
 .pageWrap {
-  padding-bottom: 72px;
+  padding-bottom: 88px;
 }
 
 .topRow {
@@ -19,7 +19,7 @@
 
 .pageTitle {
   font-size: clamp(30px, 4vw, 44px);
-  font-weight: 800;
+  font-weight: 700;
   color: #ffffff;
   letter-spacing: -0.02em;
   margin: 0;
@@ -42,21 +42,21 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 38px;
+  height: var(--ctl-h, 38px);
   padding: 0 16px;
   border-radius: 999px;
-  background: rgba(244, 67, 54, 0.12);
-  border: 1px solid rgba(244, 67, 54, 0.28);
-  color: #ff6b6b;
+  background: var(--danger-soft, rgba(255, 90, 77, 0.12));
+  border: 1px solid rgba(255, 90, 77, 0.25);
+  color: var(--danger, #FF5A4D);
   font-size: 13.5px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background 0.2s ease, color 0.2s ease;
 }
 
 .clearBtn:hover {
-  background: rgba(244, 67, 54, 0.22);
-  color: #ffffff;
+  background: var(--danger-soft-hover, rgba(255, 90, 77, 0.22));
+  color: var(--text, #FFF6EC);
 }
 
 /* Filter and search bar */
@@ -87,7 +87,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 36px;
+  height: var(--ctl-h, 38px);
   padding: 0 15px;
   border-radius: 999px;
   background: var(--g-fill);
@@ -100,7 +100,7 @@
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
-  transition: all 0.2s ease;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
 .pill:hover {
@@ -111,32 +111,35 @@
 
 .pillActive {
   background: #ffffff;
-  color: #000000;
-  font-weight: 700;
+  color: var(--on-accent, #0A0807);
+  font-weight: 600;
   border-color: #ffffff;
-  box-shadow: 0 4px 16px rgba(255, 255, 255, 0.25);
+  box-shadow: none;
 }
 
 .pillActive:hover {
-  background: #f0f0f0;
-  color: #000000;
+  background: rgba(255, 246, 236, 0.9);
+  color: var(--on-accent, #0A0807);
 }
 
 .searchInput {
-  height: 36px;
+  height: var(--ctl-h, 38px);
   width: 220px;
   padding: 0 14px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--g-fill);
+  -webkit-backdrop-filter: var(--g-blur);
+  backdrop-filter: var(--g-blur);
+  box-shadow: var(--g-edge);
   border: 1px solid rgba(255, 255, 255, 0.14);
   color: #ffffff;
-  font-size: 13px;
+  font-size: 13.5px;
   outline: none;
-  transition: all 0.2s ease;
+  transition: background 0.2s ease, border-color 0.2s ease, width 0.2s ease;
 }
 
 .searchInput:focus {
-  background: rgba(255, 255, 255, 0.14);
+  background: var(--g-fill-hover);
   border-color: rgba(255, 255, 255, 0.35);
   width: 260px;
 }
@@ -161,18 +164,18 @@
   position: relative;
   width: 100%;
   aspect-ratio: 16 / 9;
-  border-radius: 12px;
+  border-radius: var(--radius-card, 16px);
   overflow: hidden;
-  background: var(--surface-2, #14171d);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
-  transition: transform 0.28s cubic-bezier(0.2, 0.9, 0.4, 1), border-color 0.2s ease, box-shadow 0.28s ease;
+  background: var(--surface-2, #17110E);
+  border: 1px solid var(--hairline, rgba(255, 214, 170, 0.12));
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.2s ease, box-shadow 0.28s ease;
 }
 
 .historyCard:hover .artWrap {
   transform: translateY(-4px);
-  border-color: rgba(255, 255, 255, 0.35);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.75);
+  border-color: rgba(255, 255, 255, 0.32);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.72);
 }
 
 .cardImg {
@@ -204,10 +207,10 @@
   height: 44px;
   border-radius: 50%;
   background: #ffffff;
-  color: #000000;
+  color: var(--on-accent, #0A0807);
   display: grid;
   place-items: center;
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.5);
 }
 
 /* Remove button on card (X) */
@@ -215,29 +218,31 @@
   position: absolute;
   top: 8px;
   right: 8px;
-  width: 28px;
-  height: 28px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
-  background: rgba(0, 0, 0, 0.75);
+  background: rgba(10, 8, 7, 0.78);
   backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: rgba(255, 255, 255, 0.8);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--hairline-strong, rgba(255, 214, 170, 0.2));
+  color: rgba(255, 246, 236, 0.85);
   display: grid;
   place-items: center;
   cursor: pointer;
   z-index: 10;
   opacity: 0;
-  transition: opacity 0.2s ease, background 0.15s ease, color 0.15s ease;
+  transition: opacity 0.2s ease, background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
-.historyCard:hover .removeBtn {
+.historyCard:hover .removeBtn,
+.historyCard:focus-within .removeBtn {
   opacity: 1;
 }
 
 .removeBtn:hover {
-  background: rgba(244, 67, 54, 0.85);
+  background: rgba(255, 90, 77, 0.78);
   color: #ffffff;
-  border-color: rgba(244, 67, 54, 1);
+  border-color: rgba(255, 90, 77, 0.9);
 }
 
 /* Progress bar at bottom of card */
@@ -246,14 +251,14 @@
   bottom: 0;
   left: 0;
   right: 0;
-  height: 4px;
-  background: rgba(255, 255, 255, 0.2);
+  height: 3px;
+  background: rgba(255, 235, 210, 0.22);
   z-index: 5;
 }
 
 .progressFill {
   height: 100%;
-  background: #ff3b30;
+  background: var(--accent-gradient, linear-gradient(135deg, #FFC84A 0%, #FF8A2B 50%, #D8341C 100%));
   border-radius: 0 2px 2px 0;
 }
 
@@ -291,4 +296,29 @@
 .timeLeft {
   color: rgba(255, 255, 255, 0.8);
   font-weight: 600;
+}
+
+@media (hover: none), (max-width: 768px) {
+  .removeBtn {
+    opacity: 1;
+    width: 40px;
+    height: 40px;
+  }
+}
+
+@media (max-width: 768px) {
+  .pageWrap {
+    padding-bottom: 112px;
+  }
+  .clearBtn,
+  .pill {
+    min-height: 44px;
+  }
+  .searchInput {
+    width: 100%;
+    min-height: 44px;
+  }
+  .searchInput:focus {
+    width: 100%;
+  }
 }

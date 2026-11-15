@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useSyncExternalStore } from "react";
 import { DEFAULT_AVATAR } from "../lib/avatars";
 import Head from "next/head";
 import { useSession, signOut } from "next-auth/react";
@@ -49,6 +49,12 @@ const THEMES = [
   { id: "snow", name: "Snow", styleClass: styles.themeSnow },
   { id: "silk", name: "Silk", styleClass: styles.themeSilk },
   { id: "light-rays", name: "Light rays", styleClass: styles.themeLightRays },
+];
+
+const ACCENT_OPTIONS = [
+  { id: "autumn", label: "Autumn", color: "#FF8A2B" },
+  { id: "gold", label: "Gold", color: "#FFC84A" },
+  { id: "mono", label: "Mono", color: "#FFF6EC" },
 ];
 
 const QUALITIES = ["Auto", "4K", "1080p", "720p", "480p"];
@@ -120,6 +126,25 @@ export default function SettingsPage() {
     setDevice({ label: `${browser} on ${os}`, sub: `${tz || "Local"} · Active now` });
   }, []);
   const [searchQuery, setSearchQuery] = useState("");
+  const introEnabled = useSyncExternalStore(
+    (onStoreChange) => {
+      if (typeof window === "undefined") return () => {};
+      window.addEventListener("storage", onStoreChange);
+      window.addEventListener("divine:intro-enabled-change", onStoreChange);
+      return () => {
+        window.removeEventListener("storage", onStoreChange);
+        window.removeEventListener("divine:intro-enabled-change", onStoreChange);
+      };
+    },
+    () => {
+      try {
+        return window.localStorage.getItem("divine:intro-enabled") !== "false";
+      } catch {
+        return true;
+      }
+    },
+    () => true
+  );
 
   // Current active profile
   const activeProfile = useMemo(() => {
@@ -163,17 +188,19 @@ export default function SettingsPage() {
     setNameVal(activeProfile?.name || settings.name || "Guest");
   }, [activeProfile, settings.name]);
 
-  // Apply theme to document element
+  // Apply theme & accent to document element
   useEffect(() => {
     if (typeof document !== "undefined") {
       const t = settings.theme || "dark";
       document.documentElement.dataset.theme = t;
       const themeMode = settings.themeMode || (t === "performance" ? "performance" : "default");
       document.documentElement.dataset.themeMode = themeMode;
+      const accent = settings.accent || "autumn";
+      document.documentElement.dataset.accent = accent;
       const intensity = themeMode === "performance" ? 0 : (settings.bgIntensity ?? 85) / 100;
       document.documentElement.style.setProperty("--mood-bright", String(intensity));
     }
-  }, [settings.theme, settings.themeMode, settings.bgIntensity]);
+  }, [settings.theme, settings.themeMode, settings.bgIntensity, settings.accent]);
 
   // Function hoisted before useEffect to prevent TDZ error
   function handleClose() {
@@ -339,6 +366,14 @@ export default function SettingsPage() {
       showToast("Watchlist cleared");
     } else if (dialogMode === "reset-all") {
       setSettings(DEFAULT_SETTINGS);
+      if (typeof document !== "undefined") {
+        document.documentElement.dataset.accent = "autumn";
+      }
+      try {
+        window.localStorage.removeItem("divine:accent");
+        window.localStorage.removeItem("divine:intro-enabled");
+        window.dispatchEvent(new Event("divine:intro-enabled-change"));
+      } catch {}
       showToast("All settings restored to defaults");
     } else if (dialogMode === "signout-all") {
       try {
@@ -398,7 +433,15 @@ export default function SettingsPage() {
       setActiveTab("integrations");
     } else if (q.includes("quality") || q.includes("audio") || q.includes("skip") || q.includes("player") || q.includes("hindi")) {
       setActiveTab("player");
-    } else if (q.includes("theme") || q.includes("color") || q.includes("background") || q.includes("dark") || q.includes("onyx")) {
+    } else if (
+      q.includes("theme") ||
+      q.includes("color") ||
+      q.includes("background") ||
+      q.includes("dark") ||
+      q.includes("onyx") ||
+      q.includes("intro") ||
+      q.includes("animation")
+    ) {
       setActiveTab("appearance");
     } else if (q.includes("region") || q.includes("spoiler") || q.includes("history") || q.includes("clear") || q.includes("reset")) {
       setActiveTab("content");
@@ -433,14 +476,14 @@ export default function SettingsPage() {
 
         {/* Modal Card */}
         <div className={styles.modalBox} role="dialog" aria-modal="true" aria-label="Settings">
-          {/* Top-Right Close Button (✕) */}
+          {/* Top-Right Close Button */}
           <button
             type="button"
             className={styles.closeBtn}
             onClick={handleClose}
             aria-label="Close settings"
           >
-            <X size={18} strokeWidth={2.4} />
+            <X size={18} strokeWidth={1.75} />
           </button>
 
           {/* 1. Left Sidebar */}
@@ -449,7 +492,7 @@ export default function SettingsPage() {
 
             {/* Search Input */}
             <div className={styles.searchWrap}>
-              <Search size={15} className={styles.searchIcon} />
+              <Search size={15} strokeWidth={1.75} className={styles.searchIcon} />
               <input
                 type="text"
                 placeholder="Search"
@@ -467,7 +510,7 @@ export default function SettingsPage() {
                 className={`${styles.navItem} ${activeTab === "account" ? styles.navItemActive : ""}`}
                 onClick={() => setActiveTab("account")}
               >
-                <UserRound size={17} />
+                <UserRound size={17} strokeWidth={1.75} />
                 <span>Account</span>
               </button>
 
@@ -476,7 +519,7 @@ export default function SettingsPage() {
                 className={`${styles.navItem} ${activeTab === "integrations" ? styles.navItemActive : ""}`}
                 onClick={() => setActiveTab("integrations")}
               >
-                <Link2 size={17} />
+                <Link2 size={17} strokeWidth={1.75} />
                 <span>Integrations</span>
               </button>
 
@@ -485,7 +528,7 @@ export default function SettingsPage() {
                 className={`${styles.navItem} ${activeTab === "player" ? styles.navItemActive : ""}`}
                 onClick={() => setActiveTab("player")}
               >
-                <Play size={17} />
+                <Play size={17} strokeWidth={1.75} />
                 <span>Player</span>
               </button>
 
@@ -494,7 +537,7 @@ export default function SettingsPage() {
                 className={`${styles.navItem} ${activeTab === "appearance" ? styles.navItemActive : ""}`}
                 onClick={() => setActiveTab("appearance")}
               >
-                <Sparkles size={17} />
+                <Sparkles size={17} strokeWidth={1.75} />
                 <span>Appearance</span>
               </button>
 
@@ -503,7 +546,7 @@ export default function SettingsPage() {
                 className={`${styles.navItem} ${activeTab === "content" ? styles.navItemActive : ""}`}
                 onClick={() => setActiveTab("content")}
               >
-                <LayoutGrid size={17} />
+                <LayoutGrid size={17} strokeWidth={1.75} />
                 <span>Content</span>
               </button>
 
@@ -512,7 +555,7 @@ export default function SettingsPage() {
                 className={`${styles.navItem} ${activeTab === "about" ? styles.navItemActive : ""}`}
                 onClick={() => setActiveTab("about")}
               >
-                <Info size={17} />
+                <Info size={17} strokeWidth={1.75} />
                 <span>About</span>
               </button>
             </nav>
@@ -906,7 +949,7 @@ export default function SettingsPage() {
                     <div className={styles.settingRow}>
                       <span className={styles.settingLabel}>
                         Skip intros
-                        <span style={{ fontSize: 11, padding: "2px 6px", borderRadius: 4, background: "rgba(255,255,255,0.08)", color: "var(--text-dim)", marginLeft: 6 }}>Preview</span>
+                        <span className={styles.previewBadge}>Preview</span>
                       </span>
                       <button
                         type="button"
@@ -928,7 +971,7 @@ export default function SettingsPage() {
                     <div className={styles.settingRow}>
                       <span className={styles.settingLabel}>
                         Skip credits
-                        <span style={{ fontSize: 11, padding: "2px 6px", borderRadius: 4, background: "rgba(255,255,255,0.08)", color: "var(--text-dim)", marginLeft: 6 }}>Preview</span>
+                        <span className={styles.previewBadge}>Preview</span>
                       </span>
                       <button
                         type="button"
@@ -950,7 +993,7 @@ export default function SettingsPage() {
                     <div className={styles.settingRow}>
                       <span className={styles.settingLabel}>
                         Skip filler
-                        <span style={{ fontSize: 11, padding: "2px 6px", borderRadius: 4, background: "rgba(255,255,255,0.08)", color: "var(--text-dim)", marginLeft: 6 }}>Preview</span>
+                        <span className={styles.previewBadge}>Preview</span>
                       </span>
                       <button
                         type="button"
@@ -1031,7 +1074,7 @@ export default function SettingsPage() {
             {activeTab === "appearance" && (
               <>
                 <section className={styles.section}>
-                  <h2 className={styles.sectionTitle} style={{ fontSize: 24, fontWeight: 800, marginBottom: 20 }}>
+                  <h2 className={styles.themeSectionTitle}>
                     Theme
                   </h2>
                   <div className={styles.themeModeGrid}>
@@ -1055,7 +1098,7 @@ export default function SettingsPage() {
                           (settings.themeMode || "default") === "default" ? styles.themeModePreviewActive : ""
                         }`}
                         style={{
-                          background: "radial-gradient(circle at 75% 40%, rgba(220, 80, 20, 0.45) 0%, rgba(10, 11, 16, 0.95) 70%)",
+                          background: "radial-gradient(circle at 75% 40%, rgba(255, 138, 43, 0.36) 0%, rgba(10, 8, 7, 0.96) 70%)",
                         }}
                       >
                         {/* Mini floating capsule navbar */}
@@ -1102,10 +1145,10 @@ export default function SettingsPage() {
                             THE ODYSSEY
                           </span>
                           <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 7, color: "rgba(255, 255, 255, 0.8)" }}>
-                            <span style={{ border: "1px solid #22c55e", borderRadius: "50%", width: 12, height: 12, display: "grid", placeItems: "center", fontSize: 6, fontWeight: 800 }}>8.0</span>
-                            <span>• 2021 • 2h 53m •</span>
-                            <span style={{ background: "#ea580c", padding: "0 3px", borderRadius: 2, fontSize: 6, color: "#fff" }}>18</span>
-                            <span>• HD</span>
+                            <span style={{ border: "1px solid rgba(255, 255, 255, 0.55)", borderRadius: "50%", width: 12, height: 12, display: "grid", placeItems: "center", fontSize: 6, fontWeight: 700 }}>8.0</span>
+                            <span>· 2021 · 2h 53m ·</span>
+                            <span style={{ background: "rgba(255, 255, 255, 0.16)", padding: "0 3px", borderRadius: 2, fontSize: 6, color: "#fff" }}>18</span>
+                            <span>· HD</span>
                           </div>
                           <div style={{ display: "flex", gap: 5, marginTop: 6 }}>
                             <span style={{ background: "#fff", color: "#000", fontWeight: 800, fontSize: 7, padding: "3px 8px", borderRadius: 3 }}>▶ Play</span>
@@ -1141,7 +1184,7 @@ export default function SettingsPage() {
                           settings.themeMode === "performance" ? styles.themeModePreviewActive : ""
                         }`}
                         style={{
-                          background: "#08090d",
+                          background: "#0A0807",
                         }}
                       >
                         {/* Flush top navbar */}
@@ -1238,6 +1281,49 @@ export default function SettingsPage() {
                     })}
                   </div>
 
+                  {/* Accent */}
+                  {matchesSearch("Accent color") && (
+                    <div className={styles.settingRow}>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                        <span className={styles.settingLabel}>Accent</span>
+                        <span style={{ fontSize: 12, color: "var(--text-faint, rgba(255, 240, 224, 0.50))" }}>
+                          Subtle highlight tint for progress bars, focus rings, and active pills
+                        </span>
+                      </div>
+                      <div className={styles.accentRow} role="radiogroup" aria-label="Accent color">
+                        {ACCENT_OPTIONS.map((opt) => {
+                          const isActive = (settings.accent || "autumn") === opt.id;
+                          return (
+                            <button
+                              key={opt.id}
+                              type="button"
+                              role="radio"
+                              aria-checked={isActive}
+                              className={`${styles.accentPill} ${isActive ? styles.accentPillActive : ""}`}
+                              onClick={() => {
+                                setSettings((s) => ({ ...s, accent: opt.id }));
+                                if (typeof document !== "undefined") {
+                                  document.documentElement.dataset.accent = opt.id;
+                                }
+                                try {
+                                  window.localStorage.setItem("divine:accent", opt.id);
+                                } catch {}
+                                showToast(`Accent set to ${opt.label}`);
+                              }}
+                            >
+                              <span
+                                className={styles.accentSwatch}
+                                style={{ background: opt.color }}
+                                aria-hidden="true"
+                              />
+                              <span>{opt.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Show background */}
                   {matchesSearch("Show background") && (
                     <div className={styles.settingRow}>
@@ -1262,7 +1348,7 @@ export default function SettingsPage() {
                     <div className={styles.settingRow}>
                       <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
                         <span className={styles.settingLabel}>Smooth inertial scrolling</span>
-                        <span style={{ fontSize: 12, color: "rgba(255, 255, 255, 0.45)" }}>
+                        <span style={{ fontSize: 12, color: "var(--text-faint, rgba(255, 240, 224, 0.50))" }}>
                           Glides with buttery natural momentum and physics-based inertia
                         </span>
                       </div>
@@ -1370,6 +1456,37 @@ export default function SettingsPage() {
                           settings.bannerTrailersOnHover ? styles.toggleSwitchOn : ""
                         }`}
                         onClick={() => toggleSetting("bannerTrailersOnHover")}
+                      >
+                        <span className={styles.toggleKnob} />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Play intro animation */}
+                  {matchesSearch("Play intro animation") && (
+                    <div className={styles.settingRow}>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                        <span className={styles.settingLabel}>Play intro animation</span>
+                        <span style={{ fontSize: 12, color: "var(--text-faint, rgba(255, 240, 224, 0.50))" }}>
+                          Show the 8-second logo reveal once at the start of each session
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={introEnabled}
+                        aria-label="Play intro animation"
+                        className={`${styles.toggleSwitch} ${
+                          introEnabled ? styles.toggleSwitchOn : ""
+                        }`}
+                        onClick={() => {
+                          const next = !introEnabled;
+                          try {
+                            window.localStorage.setItem("divine:intro-enabled", String(next));
+                            window.dispatchEvent(new Event("divine:intro-enabled-change"));
+                          } catch {}
+                          showToast(next ? "Intro animation enabled" : "Intro animation disabled");
+                        }}
                       >
                         <span className={styles.toggleKnob} />
                       </button>
@@ -1586,8 +1703,8 @@ export default function SettingsPage() {
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src="/brands/tmdb.svg" alt="TMDB" style={{ height: 12, width: "auto", opacity: 0.85 }} />
-                      <CheckCircle2 size={15} color="#4ade80" />
-                      <span className={styles.settingSub} style={{ color: "#4ade80" }}>
+                      <CheckCircle2 size={15} strokeWidth={1.75} color="rgba(255, 255, 255, 0.85)" />
+                      <span className={styles.settingSub} style={{ color: "rgba(255, 255, 255, 0.85)" }}>
                         The Movie Database (Connected)
                       </span>
                     </div>
@@ -1699,7 +1816,7 @@ export default function SettingsPage() {
 
               {dialogMode === "delete-account" && (
                 <div style={{ display: "grid", gap: 12 }}>
-                  <p style={{ color: "rgba(255,100,100,0.9)", fontSize: 13, margin: 0, lineHeight: 1.4 }}>
+                  <p style={{ color: "var(--danger-lift, #FF7B70)", fontSize: 13, margin: 0, lineHeight: 1.4 }}>
                     Warning: This action is permanent and cannot be undone. All your history, watchlist, lists, and ratings will be erased.
                   </p>
                   <input

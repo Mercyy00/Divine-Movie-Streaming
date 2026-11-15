@@ -159,7 +159,7 @@ export default function MediaRow({ title, href, menu, menus, tabs, pager, childr
           {href ? (
             <Link href={href} className={styles.titleLink}>
               {title}
-              <ChevronRight size={20} strokeWidth={2.6} />
+              <ChevronRight size={20} strokeWidth={1.75} />
             </Link>
           ) : (
             title
@@ -182,7 +182,7 @@ export default function MediaRow({ title, href, menu, menus, tabs, pager, childr
               }}
             >
               {rowMenu.label || rowMenu.options.find((o) => o.value === rowMenu.value)?.label}
-              <ChevronDown size={16} strokeWidth={2.6} />
+              <ChevronDown size={16} strokeWidth={1.75} />
             </button>
             {openMenu === index && (
               <ul
@@ -202,7 +202,7 @@ export default function MediaRow({ title, href, menu, menus, tabs, pager, childr
                       }}
                     >
                       {o.label}
-                      {o.value === rowMenu.value && <Check size={15} strokeWidth={2.6} />}
+                      {o.value === rowMenu.value && <Check size={15} strokeWidth={1.75} />}
                     </button>
                   </li>
                 ))}
@@ -229,19 +229,19 @@ export default function MediaRow({ title, href, menu, menus, tabs, pager, childr
         {pager ? (
           <div className={styles.arrows}>
             <button type="button" onClick={pager.previous} disabled={pager.page <= 1 || pager.loading} aria-label="Previous page">
-              <ChevronLeft size={18} strokeWidth={2.6} />
+              <ChevronLeft size={18} strokeWidth={1.75} />
             </button>
             <button type="button" onClick={pager.next} disabled={!pager.hasMore || pager.loading} aria-label="Next page">
-              <ChevronRight size={18} strokeWidth={2.6} />
+              <ChevronRight size={18} strokeWidth={1.75} />
             </button>
           </div>
         ) : (
           <div className={styles.arrows}>
             <button type="button" onClick={() => page(-1)} disabled={edge.start} aria-label="Scroll left">
-              <ChevronLeft size={18} strokeWidth={2.6} />
+              <ChevronLeft size={18} strokeWidth={1.75} />
             </button>
             <button type="button" onClick={() => page(1)} disabled={edge.end} aria-label="Scroll right">
-              <ChevronRight size={18} strokeWidth={2.6} />
+              <ChevronRight size={18} strokeWidth={1.75} />
             </button>
           </div>
         )}

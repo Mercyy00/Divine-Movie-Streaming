@@ -11,23 +11,23 @@ import styles from "./HeroBanner.module.css";
 const copyVariants = {
   initial: {
     opacity: 0,
-    x: -50,
+    y: 12,
   },
   animate: {
     opacity: 1,
-    x: 0,
+    y: 0,
     transition: {
-      duration: 0.55,
-      ease: [0.16, 1, 0.3, 1],
-      staggerChildren: 0.07,
-      delayChildren: 0.04,
+      duration: 0.45,
+      ease: [0.22, 1, 0.36, 1],
+      staggerChildren: 0.05,
+      delayChildren: 0.02,
     },
   },
   exit: {
     opacity: 0,
-    x: -40,
+    y: -8,
     transition: {
-      duration: 0.32,
+      duration: 0.25,
       ease: [0.22, 1, 0.36, 1],
     },
   },
@@ -36,21 +36,21 @@ const copyVariants = {
 const childVariants = {
   initial: {
     opacity: 0,
-    x: -25,
+    y: 8,
   },
   animate: {
     opacity: 1,
-    x: 0,
+    y: 0,
     transition: {
-      duration: 0.5,
-      ease: [0.16, 1, 0.3, 1],
+      duration: 0.4,
+      ease: [0.22, 1, 0.36, 1],
     },
   },
   exit: {
     opacity: 0,
-    x: -20,
+    y: -6,
     transition: {
-      duration: 0.22,
+      duration: 0.2,
       ease: [0.22, 1, 0.36, 1],
     },
   },
@@ -59,20 +59,20 @@ const childVariants = {
 const backdropVariants = {
   initial: {
     opacity: 0,
-    scale: 1.05,
+    scale: 1.02,
   },
   animate: {
     opacity: 1,
     scale: 1,
     transition: {
-      duration: 0.68,
+      duration: 0.6,
       ease: [0.22, 1, 0.36, 1],
     },
   },
   exit: {
     opacity: 0,
     transition: {
-      duration: 0.45,
+      duration: 0.4,
       ease: [0.22, 1, 0.36, 1],
     },
   },
@@ -170,7 +170,7 @@ export default function HeroBanner({ items = [], interval = 8000 }) {
   const qualityLabel = t?.quality && String(t.quality).trim() ? String(t.quality).trim() : "";
 
   const metaItems = [
-    hasRating ? { key: "rating", node: <RatingRing value={t.rating} size={38} /> } : null,
+    hasRating ? { key: "rating", node: <RatingRing value={t.rating} size={36} /> } : null,
     t?.year ? { key: "year", node: <span>{t.year}</span> } : null,
     runtime ? { key: "runtime", node: <span>{runtime}</span> } : null,
     certClean ? { key: "cert", node: <CertBadge cert={certClean} /> } : null,
@@ -300,7 +300,7 @@ export default function HeroBanner({ items = [], interval = 8000 }) {
             onClick={() => go(activeIdx - 1)}
             aria-label="Previous title"
           >
-            <ChevronLeft size={18} strokeWidth={2.4} />
+            <ChevronLeft size={18} strokeWidth={1.75} />
           </button>
           <div className={styles.dots} role="tablist" aria-label="Choose featured title">
             {validItems.map((it, idx) => (
@@ -321,7 +321,7 @@ export default function HeroBanner({ items = [], interval = 8000 }) {
             onClick={() => go(activeIdx + 1)}
             aria-label="Next title"
           >
-            <ChevronRight size={18} strokeWidth={2.4} />
+            <ChevronRight size={18} strokeWidth={1.75} />
           </button>
         </div>
       )}

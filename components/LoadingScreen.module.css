@@ -3,18 +3,18 @@
   align-items: center;
   justify-content: center;
   width: 100%;
-  padding: 40px 20px;
+  padding: 48px 24px;
 }
 
 .fullScreen {
   position: fixed;
   inset: 0;
   z-index: 999999;
-  background: rgba(8, 10, 15, 0.88);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  background: rgba(10, 8, 7, 0.88);
+  backdrop-filter: var(--g-blur, blur(28px) saturate(170%) brightness(1.08));
+  -webkit-backdrop-filter: var(--g-blur, blur(28px) saturate(170%) brightness(1.08));
   padding: 0;
-  animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: fadeIn 0.22s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 @keyframes fadeIn {
@@ -32,122 +32,174 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px;
   text-align: center;
 }
 
 .glowAura {
   position: absolute;
-  top: 40%;
+  top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 140px;
-  height: 140px;
+  width: 120px;
+  height: 120px;
   border-radius: 50%;
   background: radial-gradient(
     circle,
-    rgba(235, 94, 40, 0.45) 0%,
-    rgba(255, 140, 66, 0.18) 45%,
-    rgba(0, 0, 0, 0) 70%
+    rgba(var(--accent-rgb, 255, 138, 43), 0.14) 0%,
+    rgba(var(--accent-rgb, 255, 138, 43), 0.04) 48%,
+    rgba(0, 0, 0, 0) 72%
   );
-  filter: blur(18px);
+  filter: blur(16px);
   pointer-events: none;
-  animation: glowPulse 2.4s ease-in-out infinite alternate;
+  animation: glowPulse 2.4s cubic-bezier(0.22, 1, 0.36, 1) infinite alternate;
 }
 
 @keyframes glowPulse {
   0% {
-    transform: translate(-50%, -50%) scale(0.85);
-    opacity: 0.65;
+    transform: translate(-50%, -50%) scale(0.95);
+    opacity: 0.5;
   }
   100% {
-    transform: translate(-50%, -50%) scale(1.18);
-    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.06);
+    opacity: 0.9;
   }
 }
 
-.leafImg {
-  position: relative;
-  display: block;
-  object-fit: contain;
-  filter: drop-shadow(0 8px 24px rgba(235, 94, 40, 0.45));
-  animation: leafFloat 3s ease-in-out infinite alternate;
-  user-select: none;
-  pointer-events: none;
+/* Flower Spinner */
+.flowerSpinner,
+.flowerSpinner * {
+  box-sizing: border-box;
 }
 
-@keyframes leafFloat {
+.flowerSpinner {
+  height: 70px;
+  width: 70px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.sm .flowerSpinner {
+  transform: scale(0.75);
+}
+
+.lg .flowerSpinner {
+  transform: scale(1.15);
+}
+
+.flowerSpinner .dotsContainer {
+  height: calc(70px / 7);
+  width: calc(70px / 7);
+}
+
+.flowerSpinner .smallerDot {
+  background: var(--accent, #FF8A2B);
+  height: 100%;
+  width: 100%;
+  border-radius: 50%;
+  animation: flower-spinner-smaller-dot-animation 2.5s 0s infinite both;
+}
+
+.flowerSpinner .biggerDot {
+  background: var(--accent, #FF8A2B);
+  height: 100%;
+  width: 100%;
+  padding: 10%;
+  border-radius: 50%;
+  animation: flower-spinner-bigger-dot-animation 2.5s 0s infinite both;
+}
+
+@keyframes flower-spinner-bigger-dot-animation {
   0% {
-    transform: translateY(-4px) scale(0.98);
+    box-shadow: var(--accent, #FF8A2B) 0px 0px 0px,
+      var(--accent, #FF8A2B) 0px 0px 0px,
+      var(--accent, #FF8A2B) 0px 0px 0px,
+      var(--accent, #FF8A2B) 0px 0px 0px,
+      var(--accent, #FF8A2B) 0px 0px 0px,
+      var(--accent, #FF8A2B) 0px 0px 0px,
+      var(--accent, #FF8A2B) 0px 0px 0px,
+      var(--accent, #FF8A2B) 0px 0px 0px;
   }
   50% {
-    transform: translateY(3px) scale(1.02);
+    transform: rotate(180deg);
+  }
+  25%,
+  75% {
+    box-shadow: var(--accent, #FF8A2B) 26px 0px 0px,
+      var(--accent, #FF8A2B) -26px 0px 0px,
+      var(--accent, #FF8A2B) 0px 26px 0px,
+      var(--accent, #FF8A2B) 0px -26px 0px,
+      var(--accent, #FF8A2B) 19px -19px 0px,
+      var(--accent, #FF8A2B) 19px 19px 0px,
+      var(--accent, #FF8A2B) -19px -19px 0px,
+      var(--accent, #FF8A2B) -19px 19px 0px;
   }
   100% {
-    transform: translateY(-4px) scale(0.98);
+    transform: rotate(360deg);
+    box-shadow: var(--accent, #FF8A2B) 0px 0px 0px,
+      var(--accent, #FF8A2B) 0px 0px 0px,
+      var(--accent, #FF8A2B) 0px 0px 0px,
+      var(--accent, #FF8A2B) 0px 0px 0px,
+      var(--accent, #FF8A2B) 0px 0px 0px,
+      var(--accent, #FF8A2B) 0px 0px 0px,
+      var(--accent, #FF8A2B) 0px 0px 0px,
+      var(--accent, #FF8A2B) 0px 0px 0px;
   }
 }
 
-/* Sizing */
-.sm .leafImg {
-  width: 64px;
-  height: auto;
-}
-.md .leafImg {
-  width: 105px;
-  height: auto;
-}
-.lg .leafImg {
-  width: 150px;
-  height: auto;
-}
-
-.messageWrap {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-family: var(--font-body, system-ui, sans-serif);
-  font-size: 14px;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.85);
-  letter-spacing: 0.3px;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
-}
-
-.messageText {
-  color: #f3f4f6;
-}
-
-.dots {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  margin-left: 2px;
-}
-
-.dot {
-  width: 3.5px;
-  height: 3.5px;
-  border-radius: 50%;
-  background: #ff7a30;
-  display: inline-block;
-  animation: dotPulse 1.4s ease-in-out infinite;
-}
-
-.dot:nth-child(2) {
-  animation-delay: 0.2s;
-}
-.dot:nth-child(3) {
-  animation-delay: 0.4s;
-}
-
-@keyframes dotPulse {
-  0%, 80%, 100% {
-    opacity: 0.2;
-    transform: scale(0.8);
+@keyframes flower-spinner-smaller-dot-animation {
+  0% {
+    box-shadow: var(--accent, #FF8A2B) 0px 0px 0px,
+      var(--accent, #FF8A2B) 0px 0px 0px,
+      var(--accent, #FF8A2B) 0px 0px 0px,
+      var(--accent, #FF8A2B) 0px 0px 0px,
+      var(--accent, #FF8A2B) 0px 0px 0px,
+      var(--accent, #FF8A2B) 0px 0px 0px,
+      var(--accent, #FF8A2B) 0px 0px 0px,
+      var(--accent, #FF8A2B) 0px 0px 0px;
   }
-  40% {
-    opacity: 1;
-    transform: scale(1.3);
+  25%,
+  75% {
+    box-shadow: var(--accent, #FF8A2B) 14px 0px 0px,
+      var(--accent, #FF8A2B) -14px 0px 0px,
+      var(--accent, #FF8A2B) 0px 14px 0px,
+      var(--accent, #FF8A2B) 0px -14px 0px,
+      var(--accent, #FF8A2B) 10px -10px 0px,
+      var(--accent, #FF8A2B) 10px 10px 0px,
+      var(--accent, #FF8A2B) -10px -10px 0px,
+      var(--accent, #FF8A2B) -10px 10px 0px;
+  }
+  100% {
+    box-shadow: var(--accent, #FF8A2B) 0px 0px 0px,
+      var(--accent, #FF8A2B) 0px 0px 0px,
+      var(--accent, #FF8A2B) 0px 0px 0px,
+      var(--accent, #FF8A2B) 0px 0px 0px,
+      var(--accent, #FF8A2B) 0px 0px 0px,
+      var(--accent, #FF8A2B) 0px 0px 0px,
+      var(--accent, #FF8A2B) 0px 0px 0px,
+      var(--accent, #FF8A2B) 0px 0px 0px;
+  }
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fullScreen,
+  .glowAura,
+  .flowerSpinner .biggerDot,
+  .flowerSpinner .smallerDot {
+    animation: none;
   }
 }

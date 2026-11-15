@@ -16,11 +16,11 @@ export default function DmcaPage() {
               width: 40,
               height: 40,
               borderRadius: 10,
-              background: "rgba(255, 122, 48, 0.15)",
-              border: "1px solid rgba(255, 122, 48, 0.3)",
+              background: "var(--accent-soft, rgba(255, 138, 43, 0.16))",
+              border: "1px solid rgba(var(--accent-rgb, 255, 138, 43), 0.30)",
               display: "grid",
               placeItems: "center",
-              color: "var(--brand-amber, #ff7a30)",
+              color: "var(--accent, #FF8A2B)",
             }}
           >
             <ShieldAlert size={22} />
@@ -93,20 +93,20 @@ export default function DmcaPage() {
             style={{
               padding: "20px 24px",
               borderRadius: 14,
-              background: "rgba(0, 229, 153, 0.06)",
-              border: "1px solid rgba(0, 229, 153, 0.2)",
+              background: "rgba(var(--accent-rgb, 255, 138, 43), 0.08)",
+              border: "1px solid rgba(var(--accent-rgb, 255, 138, 43), 0.24)",
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-              <Mail size={18} style={{ color: "var(--primary, #00e599)" }} />
-              <h2 style={{ fontSize: 17, fontWeight: 700, color: "#fff", margin: 0 }}>
+              <Mail size={18} style={{ color: "var(--accent, #FF8A2B)" }} />
+              <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text, #FFF6EC)", margin: 0 }}>
                 Designated Copyright Agent
               </h2>
             </div>
             <p style={{ margin: "0 0 12px", fontSize: 14 }}>
               Please send all copyright notices to our designated agent:
             </p>
-            <div style={{ fontFamily: "var(--font-mono)", fontSize: 14, color: "var(--primary, #00e599)" }}>
+            <div style={{ fontFamily: "var(--font-mono)", fontSize: 14, color: "var(--accent, #FF8A2B)" }}>
               <strong>Email:</strong> legal@divine.su / dmca@divine.su
             </div>
             <p style={{ margin: "10px 0 0", fontSize: 13, color: "rgba(255, 255, 255, 0.6)" }}>

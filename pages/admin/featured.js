@@ -189,7 +189,7 @@ export default function AdminFeaturedPage({ authorized = false, signedInEmail = 
             backdropFilter: "var(--g-blur, blur(24px))",
           }}
         >
-          <ShieldAlert size={44} color="#f5c04a" style={{ margin: "0 auto 14px" }} />
+          <ShieldAlert size={44} color="var(--amber, #FFC84A)" style={{ margin: "0 auto 14px" }} />
           <h1 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 10px" }}>Administrator Access Required</h1>
           {activeEmail ? (
             <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 14, lineHeight: 1.55, margin: "0 0 22px" }}>
@@ -212,7 +212,7 @@ export default function AdminFeaturedPage({ authorized = false, signedInEmail = 
                   padding: "0 20px",
                   borderRadius: 999,
                   background: "#ffffff",
-                  color: "#000000",
+                  color: "var(--on-accent, #0A0807)",
                   fontWeight: 700,
                   fontSize: 14,
                   textDecoration: "none",
@@ -279,8 +279,8 @@ export default function AdminFeaturedPage({ authorized = false, signedInEmail = 
               gap: 6,
               padding: "9px 16px",
               borderRadius: 8,
-              background: "var(--primary, #00e599)",
-              color: "#000",
+              background: "#ffffff",
+              color: "var(--on-accent, #0A0807)",
               fontWeight: 700,
               fontSize: 13,
               border: "none",
@@ -326,8 +326,8 @@ export default function AdminFeaturedPage({ authorized = false, signedInEmail = 
                     justifyContent: "space-between",
                     gap: 16,
                     padding: "12px 18px",
-                    background: "var(--surface-1, #0f1115)",
-                    border: "1px solid rgba(255,255,255,0.08)",
+                    background: "var(--surface-1, #100C0A)",
+                    border: "1px solid var(--hairline, rgba(255, 214, 170, 0.10))",
                     borderRadius: 12,
                     transition: "border-color 0.2s ease",
                   }}
@@ -347,14 +347,14 @@ export default function AdminFeaturedPage({ authorized = false, signedInEmail = 
 
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={data.poster || data.backdrop || "/logo.png"}
+                      src={data.poster || data.backdrop || "/brand/divine-logo-autumn-on-dark.svg"}
                       alt=""
                       style={{
                         width: 44,
                         height: 62,
                         borderRadius: 6,
                         objectFit: "cover",
-                        background: "#111",
+                        background: "var(--surface-2, #17110E)",
                         flexShrink: 0,
                       }}
                       onError={(e) => {
@@ -401,9 +401,9 @@ export default function AdminFeaturedPage({ authorized = false, signedInEmail = 
                         borderRadius: 6,
                         fontSize: 12,
                         fontWeight: 600,
-                        border: "1px solid rgba(255,255,255,0.12)",
-                        background: item.active ? "rgba(74, 222, 128, 0.12)" : "rgba(255,255,255,0.04)",
-                        color: item.active ? "#4ade80" : "rgba(255,255,255,0.5)",
+                        border: "1px solid var(--hairline, rgba(255, 214, 170, 0.12))",
+                        background: item.active ? "var(--success-soft, rgba(91, 185, 140, 0.14))" : "rgba(255, 235, 210, 0.04)",
+                        color: item.active ? "var(--success, #5BB98C)" : "var(--text-faint, rgba(255, 240, 224, 0.50))",
                         cursor: "pointer",
                       }}
                       title={item.active ? "Currently displayed on banner" : "Hidden from banner"}
@@ -431,7 +431,7 @@ export default function AdminFeaturedPage({ authorized = false, signedInEmail = 
                       onClick={() => handleDelete(item)}
                       style={{
                         padding: "6px 8px",
-                        color: "#f87171",
+                        color: "var(--danger, #FF5A4D)",
                         background: "none",
                         border: "none",
                         cursor: "pointer",
@@ -471,8 +471,8 @@ export default function AdminFeaturedPage({ authorized = false, signedInEmail = 
               style={{
                 width: "100%",
                 maxWidth: 520,
-                background: "#14171d",
-                border: "1px solid rgba(255,255,255,0.16)",
+                background: "var(--surface-2, #17110E)",
+                border: "1px solid var(--hairline-strong, rgba(255, 214, 170, 0.18))",
                 borderRadius: 16,
                 padding: 24,
                 boxShadow: "0 24px 60px rgba(0,0,0,0.8)",
@@ -536,7 +536,7 @@ export default function AdminFeaturedPage({ authorized = false, signedInEmail = 
                     <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={t.poster || t.backdrop || "/logo.png"}
+                        src={t.poster || t.backdrop || "/brand/divine-logo-autumn-on-dark.svg"}
                         alt=""
                         style={{ width: 32, height: 46, borderRadius: 4, objectFit: "cover" }}
                       />
@@ -556,8 +556,8 @@ export default function AdminFeaturedPage({ authorized = false, signedInEmail = 
                       style={{
                         padding: "6px 12px",
                         borderRadius: 6,
-                        background: "var(--primary, #00e599)",
-                        color: "#000",
+                        background: "#ffffff",
+                        color: "var(--on-accent, #0A0807)",
                         fontSize: 12,
                         fontWeight: 700,
                         border: "none",
@@ -580,11 +580,11 @@ export default function AdminFeaturedPage({ authorized = false, signedInEmail = 
               position: "fixed",
               bottom: 24,
               right: 24,
-              background: "#1a1d24",
-              color: "#fff",
+              background: "var(--surface-3, #1F1712)",
+              color: "var(--text, #FFF6EC)",
               padding: "10px 18px",
               borderRadius: 8,
-              border: "1px solid rgba(255,255,255,0.15)",
+              border: "1px solid var(--hairline-strong, rgba(255, 214, 170, 0.18))",
               fontSize: 13,
               zIndex: 99999,
               boxShadow: "0 10px 30px rgba(0,0,0,0.5)",

@@ -4,11 +4,11 @@
   "description": "Stream movies, series and anime directly with high quality video and real-time TMDB discovery.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#080808",
-  "theme_color": "#080808",
+  "background_color": "#0A0807",
+  "theme_color": "#0A0807",
   "icons": [
     {
-      "src": "/favicon.svg",
+      "src": "/brand/favicon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"

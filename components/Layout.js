@@ -39,7 +39,7 @@ export default function Layout({
         <meta name="twitter:description" content={metaDesc} />
         {image && <meta name="twitter:image" content={image} />}
         <link rel="icon" href="/favicon.ico" sizes="any" />
-        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+        <link rel="icon" href="/brand/favicon.svg" type="image/svg+xml" />
         <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png" />
         <link rel="icon" type="image/png" sizes="64x64" href="/favicon.png" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
@@ -52,10 +52,10 @@ export default function Layout({
           <Link href="/" aria-label="DIVINE Home" style={{ display: "inline-block" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/logo.png"
+              src="/brand/divine-logo-autumn-on-dark.svg"
               alt="DIVINE"
               style={{
-                height: 42,
+                height: 36,
                 width: "auto",
                 display: "block",
                 filter: "drop-shadow(0 2px 8px rgba(0, 0, 0, 0.6))",

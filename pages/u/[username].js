@@ -491,7 +491,7 @@ export default function UserProfile({ cardMap = {} }) {
                   </div>
                 )}
                 <div className={styles.privacyPill}>
-                  <Lock size={13} />
+                  <Lock size={13} strokeWidth={1.75} />
                   <span>
                     {remoteUser?.locked
                       ? "Private Profile"
@@ -511,7 +511,7 @@ export default function UserProfile({ cardMap = {} }) {
                   onClick={openEditModal}
                   aria-label="Edit profile"
                 >
-                  <Pencil size={15} />
+                  <Pencil size={15} strokeWidth={1.75} />
                   <span>Edit</span>
                 </button>
               )}
@@ -521,7 +521,7 @@ export default function UserProfile({ cardMap = {} }) {
                 onClick={handleShare}
                 aria-label="Share profile"
               >
-                <Share2 size={15} />
+                <Share2 size={15} strokeWidth={1.75} />
                 <span>Share</span>
               </button>
             </div>
@@ -542,7 +542,7 @@ export default function UserProfile({ cardMap = {} }) {
                 margin: "0 auto 20px",
               }}
             >
-              <Lock size={32} opacity={0.6} />
+              <Lock size={32} opacity={0.6} strokeWidth={1.75} />
             </div>
             <h2 style={{ fontSize: 22, fontWeight: 700, margin: "0 0 8px", color: "#fff" }}>
               This profile is private
@@ -643,45 +643,53 @@ export default function UserProfile({ cardMap = {} }) {
               <span className={styles.cardSub}>{genreSummary}</span>
             </div>
 
-            <div className={styles.genresList}>
-              <div className={styles.genresTableHead}>
-                <span>Titles</span>
-                <span>Hours</span>
-              </div>
+            {genreStats.length > 0 ? (
+              <>
+                <div className={styles.genresList}>
+                  <div className={styles.genresTableHead}>
+                    <span>Titles</span>
+                    <span>Hours</span>
+                  </div>
 
-              {genreStats.map((g) => (
-                <div key={g.name} className={styles.genreRow}>
-                  <span className={styles.genreLabel}>{g.name}</span>
-                  <div className={styles.genreBarWrap}>
+                  {genreStats.map((g) => (
+                    <div key={g.name} className={styles.genreRow}>
+                      <span className={styles.genreLabel}>{g.name}</span>
+                      <div className={styles.genreBarWrap}>
+                        <div
+                          className={styles.genreBarFill}
+                          style={{ width: `${g.percent}%` }}
+                        />
+                      </div>
+                      <div className={styles.genreStats}>
+                        <span className={styles.genreCount}>{g.count}</span>
+                        <span className={styles.genreHours}>{g.hours}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className={styles.ratioRow}>
+                  <div className={styles.ratioBar}>
                     <div
-                      className={styles.genreBarFill}
-                      style={{ width: `${g.percent}%` }}
+                      className={styles.ratioMovieSegment}
+                      style={{ width: `${ratio.moviePct}%` }}
+                    />
+                    <div
+                      className={styles.ratioSeriesSegment}
+                      style={{ width: `${100 - ratio.moviePct}%` }}
                     />
                   </div>
-                  <div className={styles.genreStats}>
-                    <span className={styles.genreCount}>{g.count}</span>
-                    <span className={styles.genreHours}>{g.hours}</span>
+                  <div className={styles.ratioLabels}>
+                    <span>{ratio.movies} Movies</span>
+                    <span>{ratio.series} Series</span>
                   </div>
                 </div>
-              ))}
-            </div>
-
-            <div className={styles.ratioRow}>
-              <div className={styles.ratioBar}>
-                <div
-                  className={styles.ratioMovieSegment}
-                  style={{ width: `${ratio.moviePct}%` }}
-                />
-                <div
-                  className={styles.ratioSeriesSegment}
-                  style={{ width: `${100 - ratio.moviePct}%` }}
-                />
-              </div>
-              <div className={styles.ratioLabels}>
-                <span>{ratio.movies} Movies</span>
-                <span>{ratio.series} Series</span>
-              </div>
-            </div>
+              </>
+            ) : (
+              <p className={styles.cardSub} style={{ margin: "auto 0" }}>
+                Genre distribution and movie-to-series balance appear once you start watching.
+              </p>
+            )}
           </div>
         </section>
 
@@ -689,15 +697,21 @@ export default function UserProfile({ cardMap = {} }) {
         <section className={styles.mediaSection}>
           {activeTab === "history" && (
             <div className={styles.mediaGrid}>
-              {watchedEntries.map((item) => (
-                <MediaCard
-                  key={item.id}
-                  title={item.title}
-                  progress={item.progress}
-                  timeLeft={item.timeLeft}
-                  wide={true}
-                />
-              ))}
+              {watchedEntries.length > 0 ? (
+                watchedEntries.map((item) => (
+                  <MediaCard
+                    key={item.id}
+                    title={item.title}
+                    progress={item.progress}
+                    timeLeft={item.timeLeft}
+                    wide={true}
+                  />
+                ))
+              ) : (
+                <div className={styles.emptyState}>
+                  <p>No watch history yet.</p>
+                </div>
+              )}
             </div>
           )}
 
@@ -750,7 +764,7 @@ export default function UserProfile({ cardMap = {} }) {
                   onClick={() => setIsEditing(false)}
                   aria-label="Close"
                 >
-                  <X size={20} />
+                  <X size={18} strokeWidth={1.75} />
                 </button>
               </div>
 
@@ -810,7 +824,7 @@ export default function UserProfile({ cardMap = {} }) {
                     <label htmlFor="edit-bio" className={styles.inputLabel}>
                       Bio
                     </label>
-                    <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>
+                    <span style={{ fontSize: 12, color: "rgba(255,255,255,0.45)" }}>
                       {editBio.length}/160
                     </span>
                   </div>

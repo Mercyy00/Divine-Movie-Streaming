@@ -20,7 +20,7 @@ export default function AdminNav({ activeTab = "users" }) {
         gap: 16,
         paddingBottom: 20,
         marginBottom: 24,
-        borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
+        borderBottom: "1px solid var(--hairline, rgba(255, 214, 170, 0.10))",
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -29,20 +29,20 @@ export default function AdminNav({ activeTab = "users" }) {
             width: 38,
             height: 38,
             borderRadius: 10,
-            background: "rgba(245, 192, 74, 0.12)",
-            border: "1px solid rgba(245, 192, 74, 0.28)",
+            background: "var(--accent-soft, rgba(255, 138, 43, 0.16))",
+            border: "1px solid rgba(var(--accent-rgb, 255, 138, 43), 0.32)",
             display: "grid",
             placeItems: "center",
-            color: "var(--role-admin, #f5c04a)",
+            color: "var(--role-admin, #FFC84A)",
           }}
         >
           <Shield size={20} />
         </div>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0, letterSpacing: "-0.01em" }}>
+          <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0, letterSpacing: "-0.01em", color: "var(--text, #FFF6EC)" }}>
             Admin Dashboard
           </h1>
-          <p style={{ margin: 0, fontSize: 13, color: "rgba(255, 255, 255, 0.55)" }}>
+          <p style={{ margin: 0, fontSize: 13, color: "var(--text-faint, rgba(255, 240, 224, 0.50))" }}>
             Control user permissions, moderation, and homepage featured titles
           </p>
         </div>
@@ -66,14 +66,14 @@ export default function AdminNav({ activeTab = "users" }) {
                 fontWeight: 600,
                 textDecoration: "none",
                 transition: "all 0.15s ease",
-                background: isActive ? "rgba(255, 255, 255, 0.12)" : "rgba(255, 255, 255, 0.04)",
-                color: isActive ? "#ffffff" : "rgba(255, 255, 255, 0.65)",
+                background: isActive ? "rgba(255, 235, 210, 0.12)" : "rgba(255, 235, 210, 0.04)",
+                color: isActive ? "var(--text, #FFF6EC)" : "var(--text-dim, rgba(255, 240, 224, 0.65))",
                 border: isActive
-                  ? "1px solid rgba(255, 255, 255, 0.25)"
-                  : "1px solid rgba(255, 255, 255, 0.08)",
+                  ? "1px solid var(--hairline-strong, rgba(255, 214, 170, 0.25))"
+                  : "1px solid var(--hairline, rgba(255, 214, 170, 0.10))",
               }}
             >
-              <Icon size={15} style={{ color: isActive ? "var(--primary, #ffffff)" : "inherit" }} />
+              <Icon size={15} style={{ color: isActive ? "var(--accent, #FF8A2B)" : "inherit" }} />
               <span>{label}</span>
             </Link>
           );
@@ -88,7 +88,7 @@ export default function AdminNav({ activeTab = "users" }) {
             padding: "8px 14px",
             borderRadius: 8,
             fontSize: 13,
-            color: "rgba(255, 255, 255, 0.5)",
+            color: "var(--text-faint, rgba(255, 240, 224, 0.50))",
             textDecoration: "none",
             marginLeft: 6,
           }}

@@ -126,7 +126,7 @@ export default function History({ cardMap = {} }) {
                 onClick={handleClearAll}
                 title="Clear all watch history"
               >
-                <Trash2 size={15} />
+                <Trash2 size={15} strokeWidth={1.75} />
                 <span>{confirmClear ? "Confirm clear?" : "Clear history"}</span>
               </button>
               {confirmClear && (
@@ -159,7 +159,7 @@ export default function History({ cardMap = {} }) {
                 className={`${styles.pill} ${activeFilter === "movies" ? styles.pillActive : ""}`}
                 onClick={() => setActiveFilter("movies")}
               >
-                <Film size={13} />
+                <Film size={13} strokeWidth={1.75} />
                 Movies ({counts.movies})
               </button>
               <button
@@ -167,7 +167,7 @@ export default function History({ cardMap = {} }) {
                 className={`${styles.pill} ${activeFilter === "series" ? styles.pillActive : ""}`}
                 onClick={() => setActiveFilter("series")}
               >
-                <Tv size={13} />
+                <Tv size={13} strokeWidth={1.75} />
                 Series ({counts.series})
               </button>
               {counts.anime > 0 && (
@@ -176,7 +176,7 @@ export default function History({ cardMap = {} }) {
                   className={`${styles.pill} ${activeFilter === "anime" ? styles.pillActive : ""}`}
                   onClick={() => setActiveFilter("anime")}
                 >
-                  <Drama size={13} />
+                  <Drama size={13} strokeWidth={1.75} />
                   Anime ({counts.anime})
                 </button>
               )}
@@ -272,7 +272,7 @@ export default function History({ cardMap = {} }) {
                           {/* Hover Play Button */}
                           <div className={styles.playOverlay}>
                             <div className={styles.playIconCircle}>
-                              <Play size={18} fill="currentColor" />
+                              <Play size={18} fill="currentColor" strokeWidth={1.75} />
                             </div>
                           </div>
 
@@ -284,7 +284,7 @@ export default function History({ cardMap = {} }) {
                             title={`Remove ${item.title.title} from history`}
                             aria-label={`Remove ${item.title.title} from history`}
                           >
-                            <X size={15} />
+                            <X size={15} strokeWidth={1.75} />
                           </button>
 
                           {/* Progress Bar */}
@@ -313,11 +313,11 @@ export default function History({ cardMap = {} }) {
                               <span>{item.title.year}</span>
                             ) : null}
                             {(seriesLabel || item.title.year) && timeRemaining && (
-                              <span className={styles.dot}>•</span>
+                              <span className={styles.dot}>·</span>
                             )}
                             {timeRemaining && (
                               <span className={styles.timeLeft}>
-                                <Clock size={11} style={{ display: "inline", marginRight: 4 }} />
+                                <Clock size={12} strokeWidth={1.75} style={{ display: "inline", marginRight: 4, verticalAlign: "-1px" }} />
                                 {timeRemaining}
                               </span>
                             )}

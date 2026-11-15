@@ -389,13 +389,16 @@ export function Select({ id, label, value, onChange, options }) {
   return (
     <label className={styles.select} htmlFor={id}>
       <span>{label}</span>
-      <select id={id} value={value} onChange={(e) => onChange(e.target.value)}>
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
+      <span className={styles.selectWrap}>
+        <select id={id} value={value} onChange={(e) => onChange(e.target.value)}>
+          {options.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+        <ChevronDown size={14} strokeWidth={1.75} className={styles.selectChevron} aria-hidden="true" />
+      </span>
     </label>
   );
 }

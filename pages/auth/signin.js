@@ -42,9 +42,9 @@ export default function SignIn() {
             <Link href="/" aria-label="DIVINE Home">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="/logo.png"
+                src="/brand/divine-logo-autumn-on-dark.svg"
                 alt="DIVINE"
-                style={{ height: 52, width: "auto", display: "block", filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.6))" }}
+                style={{ height: 48, width: "auto", display: "block", filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.6))" }}
               />
             </Link>
           </div>

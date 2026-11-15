@@ -938,14 +938,6 @@ function TitleContent({ t, id }) {
                     {part.kind === "rating" && (
                       <span
                         className={styles.ratingPill}
-                        style={{
-                          borderColor:
-                            part.value >= 7.0
-                              ? "#22c55e"
-                              : part.value >= 5.0
-                              ? "#eab308"
-                              : "#ef4444",
-                        }}
                         title={`Rating: ${part.value.toFixed(1)}/10`}
                       >
                         {part.value.toFixed(1)}
@@ -953,15 +945,7 @@ function TitleContent({ t, id }) {
                     )}
                     {part.kind === "text" && <span>{part.value}</span>}
                     {part.kind === "cert" && (
-                      <span
-                        className={styles.certBadge}
-                        style={{
-                          background:
-                            part.value.includes("14") || part.value.includes("PG-13")
-                              ? "#ea580c"
-                              : "#e11d48",
-                        }}
-                      >
+                      <span className={styles.certBadge}>
                         {part.value}
                       </span>
                     )}
@@ -994,7 +978,7 @@ function TitleContent({ t, id }) {
             {comingLabel && (
               <div className={styles.comingBannerRow}>
                 <span className={styles.releasePillBanner}>
-                  <Calendar size={15} />
+                  <Calendar size={15} strokeWidth={1.75} />
                   <span>{comingLabel}</span>
                 </span>
               </div>
@@ -1029,7 +1013,7 @@ function TitleContent({ t, id }) {
                   className={styles.playBtn}
                   style={{ position: "relative", overflow: "hidden" }}
                 >
-                  <Play size={18} fill="currentColor" />
+                  <Play size={18} strokeWidth={1.75} fill="currentColor" />
                   <span>{resumeInfo.label}</span>
                 </Link>
               ) : (
@@ -1037,7 +1021,7 @@ function TitleContent({ t, id }) {
                   href={isSeries ? `/watch/${t.id}?season=${selectedSeason || 1}&episode=${selectedEp || 1}` : `/watch/${t.id}`}
                   className={styles.playBtn}
                 >
-                  <Play size={18} fill="currentColor" />
+                  <Play size={18} strokeWidth={1.75} fill="currentColor" />
                   Play
                 </Link>
               )}
@@ -1049,7 +1033,7 @@ function TitleContent({ t, id }) {
                   className={styles.glassBtn}
                   onClick={() => openTrailer(t.trailerKey)}
                 >
-                  <Film size={18} />
+                  <Film size={18} strokeWidth={1.75} />
                   Trailer
                 </button>
               )}
@@ -1064,7 +1048,7 @@ function TitleContent({ t, id }) {
                   showToast(saved ? "Removed from watchlist" : "Saved to watchlist");
                 }}
               >
-                {saved ? <Check size={18} /> : <Plus size={18} />}
+                {saved ? <Check size={18} strokeWidth={1.75} /> : <Plus size={18} strokeWidth={1.75} />}
                 <span>{saved ? "Saved" : "Watchlist"}</span>
               </button>
 
@@ -1077,7 +1061,7 @@ function TitleContent({ t, id }) {
                 aria-label={reaction === "like" ? "Remove like" : "Like this title"}
                 title={reaction === "like" ? "Liked" : "Like"}
               >
-                <ThumbsUp size={18} />
+                <ThumbsUp size={18} strokeWidth={1.75} />
               </button>
 
               {/* Mark Watched Button */}
@@ -1089,7 +1073,7 @@ function TitleContent({ t, id }) {
                 aria-label={isHeroWatched ? "Mark as unwatched" : "Mark as watched"}
                 title={isHeroWatched ? "Watched" : "Mark as watched"}
               >
-                <Check size={18} strokeWidth={2.5} />
+                <Check size={18} strokeWidth={1.75} />
               </button>
 
               {/* Share Button */}
@@ -1100,7 +1084,7 @@ function TitleContent({ t, id }) {
                 aria-label="Share title"
                 title="Share"
               >
-                <Share2 size={18} />
+                <Share2 size={18} strokeWidth={1.75} />
               </button>
 
               {/* Add to list Button & Dropdown */}
@@ -1121,7 +1105,7 @@ function TitleContent({ t, id }) {
                   aria-haspopup="dialog"
                   aria-expanded={showListMenu}
                 >
-                  <ListPlus size={18} />
+                  <ListPlus size={18} strokeWidth={1.75} />
                 </button>
 
                 {hoverListBtn && !showListMenu && (
@@ -1149,7 +1133,7 @@ function TitleContent({ t, id }) {
                             >
                               <div className={styles.listItemLeft}>
                                 <div className={`${styles.listCheckbox} ${isSavedInList ? styles.listCheckboxActive : ""}`}>
-                                  {isSavedInList && <Check size={13} strokeWidth={3.5} color="#000000" />}
+                                  {isSavedInList && <Check size={13} strokeWidth={2.25} color="#080808" />}
                                 </div>
                                 <span className={styles.listName}>{list.name}</span>
                               </div>
@@ -1177,7 +1161,7 @@ function TitleContent({ t, id }) {
                         aria-label="Create list"
                         title="Create list"
                       >
-                        <Plus size={16} strokeWidth={3} />
+                        <Plus size={16} strokeWidth={1.75} />
                       </button>
                     </form>
                   </div>
@@ -1198,7 +1182,7 @@ function TitleContent({ t, id }) {
                   aria-haspopup="menu"
                   aria-expanded={showMoreMenu}
                 >
-                  <MoreHorizontal size={18} />
+                  <MoreHorizontal size={18} strokeWidth={1.75} />
                 </button>
 
                 {showMoreMenu && (
@@ -1209,7 +1193,7 @@ function TitleContent({ t, id }) {
                       className={`${styles.moreItem} ${reaction === "dislike" ? styles.moreItemActive : ""}`}
                       onClick={() => toggleReaction("dislike")}
                     >
-                      <ThumbsDown size={18} />
+                      <ThumbsDown size={17} strokeWidth={1.75} />
                       <span>Not for me</span>
                     </button>
 
@@ -1219,7 +1203,7 @@ function TitleContent({ t, id }) {
                       className={`${styles.moreItem} ${reaction === "like" ? styles.moreItemActive : ""}`}
                       onClick={() => toggleReaction("like")}
                     >
-                      <ThumbsUp size={18} />
+                      <ThumbsUp size={17} strokeWidth={1.75} />
                       <span>I like this</span>
                     </button>
 
@@ -1229,7 +1213,7 @@ function TitleContent({ t, id }) {
                       className={`${styles.moreItem} ${reaction === "love" ? styles.moreItemActive : ""}`}
                       onClick={() => toggleReaction("love")}
                     >
-                      <Heart size={18} fill={reaction === "love" ? "currentColor" : "none"} />
+                      <Heart size={17} strokeWidth={1.75} fill={reaction === "love" ? "currentColor" : "none"} />
                       <span>Love this</span>
                     </button>
 
@@ -1239,7 +1223,7 @@ function TitleContent({ t, id }) {
                       className={`${styles.moreItem} ${isScheduled ? styles.moreItemActive : ""}`}
                       onClick={handleNotifyMe}
                     >
-                      <Bell size={18} />
+                      <Bell size={17} strokeWidth={1.75} />
                       <span>{isScheduled ? "Reminder set" : "Notify me"}</span>
                     </button>
 
@@ -1250,7 +1234,7 @@ function TitleContent({ t, id }) {
                         className={styles.moreItem}
                         onClick={handleScrollToEpisodes}
                       >
-                        <List size={18} />
+                        <List size={17} strokeWidth={1.75} />
                         <span>Episodes</span>
                       </button>
                     )}
@@ -1261,7 +1245,7 @@ function TitleContent({ t, id }) {
                       className={styles.moreItem}
                       onClick={handleMoreLikeThis}
                     >
-                      <Clapperboard size={18} />
+                      <Clapperboard size={17} strokeWidth={1.75} />
                       <span>More like this</span>
                     </button>
                   </div>
@@ -1359,7 +1343,7 @@ function TitleContent({ t, id }) {
                     <span>
                       {currentSeasonObj?.name || `Season ${selectedSeason}`}
                     </span>
-                    <ChevronLeft size={15} style={{ transform: showSeasonModal ? "rotate(90deg)" : "rotate(-90deg)", transition: "transform 0.2s ease" }} />
+                      <ChevronLeft size={15} strokeWidth={1.75} style={{ transform: showSeasonModal ? "rotate(90deg)" : "rotate(-90deg)", transition: "transform 0.2s ease" }} />
                   </button>
 
                   {showSeasonModal && (
@@ -1375,7 +1359,7 @@ function TitleContent({ t, id }) {
                             disabled={activeSeasonIndex <= 0}
                             aria-label="Previous Season"
                           >
-                            <ChevronLeft size={16} />
+                            <ChevronLeft size={16} strokeWidth={1.75} />
                           </button>
                         )}
 
@@ -1434,7 +1418,7 @@ function TitleContent({ t, id }) {
                             disabled={activeSeasonIndex >= seasonOptions.length - 1}
                             aria-label="Next Season"
                           >
-                            <ChevronRight size={16} />
+                            <ChevronRight size={16} strokeWidth={1.75} />
                           </button>
                         )}
                       </div>
@@ -1473,7 +1457,7 @@ function TitleContent({ t, id }) {
                 </div>
 
                 <div className={styles.epSearchWrap}>
-                  <Search size={14} className={styles.searchIcon} />
+                  <Search size={14} strokeWidth={1.75} className={styles.searchIcon} />
                   <input
                     type="text"
                     placeholder="Search episodes"
@@ -1488,7 +1472,7 @@ function TitleContent({ t, id }) {
                   className={styles.epSortBtn}
                   onClick={() => setEpSort((s) => (s === "oldest" ? "newest" : "oldest"))}
                 >
-                  <ArrowUpDown size={14} />
+                  <ArrowUpDown size={14} strokeWidth={1.75} />
                   <span>{epSort === "oldest" ? "Oldest" : "Newest"}</span>
                 </button>
               </div>
@@ -1584,7 +1568,7 @@ function TitleContent({ t, id }) {
                             </div>
                           )}
                           <span className={styles.epPlayOverlay} aria-hidden="true">
-                            <Play size={22} fill="currentColor" />
+                            <Play size={20} strokeWidth={1.75} fill="currentColor" />
                           </span>
                         </Link>
 
@@ -1607,7 +1591,7 @@ function TitleContent({ t, id }) {
                             aria-pressed={isWatched}
                             title={isWatched ? "Mark as unwatched" : "Mark as watched"}
                           >
-                            {isWatched && <Check size={14} strokeWidth={3.5} color="#000000" />}
+                            {isWatched && <Check size={14} strokeWidth={2} color="#080808" />}
                           </button>
                         )}
                       </div>
@@ -1624,24 +1608,13 @@ function TitleContent({ t, id }) {
                         {isSpoilerHidden && (
                           <button
                             type="button"
+                            className={styles.revealBtn}
                             onClick={() =>
                               setRevealedSpoilers((prev) => ({
                                 ...prev,
                                 [`${selectedSeason}_${ep.episodeNumber}`]: true,
                               }))
                             }
-                            style={{
-                              background: "rgba(255,255,255,0.08)",
-                              border: "1px solid rgba(255,255,255,0.14)",
-                              borderRadius: 999,
-                              color: "rgba(255,255,255,0.8)",
-                              fontSize: 11,
-                              fontWeight: 600,
-                              padding: "3px 8px",
-                              cursor: "pointer",
-                              flexShrink: 0,
-                              marginTop: 2,
-                            }}
                           >
                             Reveal
                           </button>
@@ -1736,7 +1709,7 @@ function TitleContent({ t, id }) {
                         onClick={() => scrollRelated("left")}
                         aria-label="Previous"
                       >
-                        <ChevronLeft size={16} />
+                        <ChevronLeft size={16} strokeWidth={1.75} />
                       </button>
                       <button
                         type="button"
@@ -1744,7 +1717,7 @@ function TitleContent({ t, id }) {
                         onClick={() => scrollRelated("right")}
                         aria-label="Next"
                       >
-                        <ChevronRight size={16} />
+                        <ChevronRight size={16} strokeWidth={1.75} />
                       </button>
                     </div>
                   </div>
@@ -1847,7 +1820,7 @@ function TitleContent({ t, id }) {
                         onClick={() => scrollMoreLikeThis("left")}
                         aria-label="Previous"
                       >
-                        <ChevronLeft size={16} />
+                        <ChevronLeft size={16} strokeWidth={1.75} />
                       </button>
                       <button
                         type="button"
@@ -1855,7 +1828,7 @@ function TitleContent({ t, id }) {
                         onClick={() => scrollMoreLikeThis("right")}
                         aria-label="Next"
                       >
-                        <ChevronRight size={16} />
+                        <ChevronRight size={16} strokeWidth={1.75} />
                       </button>
                     </div>
                   </div>
@@ -1957,7 +1930,7 @@ function TitleContent({ t, id }) {
                       referrerPolicy="no-referrer"
                     />
                     <div className={styles.trailerPlayIcon}>
-                      <Play size={20} fill="currentColor" />
+                      <Play size={20} strokeWidth={1.75} fill="currentColor" />
                     </div>
                   </div>
                   <div className={styles.trailerInfo}>
@@ -2207,7 +2180,7 @@ function TitleContent({ t, id }) {
               onClick={() => setActiveVideo(null)}
               aria-label="Close trailer"
             >
-              <X size={20} />
+              <X size={20} strokeWidth={1.75} />
             </button>
             <div className={styles.videoWrap}>
               <iframe

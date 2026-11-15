@@ -621,7 +621,7 @@ export default function Lists({ cardMap = {} }) {
 
               {/* Right Side: Numbered Tracklist of Items */}
               <div className={styles.listTrackList}>
-                <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
+                <div className={styles.watchlistFilters}>
                   {[
                     { value: "all", label: "All" },
                     { value: "movie", label: "Movies" },
@@ -632,16 +632,7 @@ export default function Lists({ cardMap = {} }) {
                       key={tab.value}
                       type="button"
                       onClick={() => setTypeFilter(tab.value)}
-                      style={{
-                        padding: "6px 14px",
-                        borderRadius: 999,
-                        fontSize: 13,
-                        fontWeight: 600,
-                        background: typeFilter === tab.value ? "#ffffff" : "var(--g-fill, rgba(255,255,255,0.08))",
-                        color: typeFilter === tab.value ? "#000000" : "rgba(255,255,255,0.75)",
-                        border: "1px solid var(--g-edge, rgba(255,255,255,0.14))",
-                        cursor: "pointer",
-                      }}
+                      className={`${styles.filterPill} ${typeFilter === tab.value ? styles.filterPillActive : ""}`}
                     >
                       {tab.label}
                     </button>
@@ -714,28 +705,28 @@ export default function Lists({ cardMap = {} }) {
                         </Link>
 
                         {canReorder && (
-                          <div style={{ display: "inline-flex", gap: 4 }}>
+                          <div style={{ display: "inline-flex", gap: 6 }}>
                             <button
                               type="button"
                               className={styles.actionBtn}
-                              style={{ padding: "5px 7px" }}
+                              style={{ width: 38, padding: 0, justifyContent: "center" }}
                               disabled={index === 0}
                               onClick={() => handleReorder(index, index - 1)}
                               aria-label={`Move ${item.title} up`}
                               title="Move up"
                             >
-                              <ArrowUp size={13} />
+                              <ArrowUp size={14} strokeWidth={1.75} />
                             </button>
                             <button
                               type="button"
                               className={styles.actionBtn}
-                              style={{ padding: "5px 7px" }}
+                              style={{ width: 38, padding: 0, justifyContent: "center" }}
                               disabled={index === filteredCollectionItems.length - 1}
                               onClick={() => handleReorder(index, index + 1)}
                               aria-label={`Move ${item.title} down`}
                               title="Move down"
                             >
-                              <ArrowDown size={13} />
+                              <ArrowDown size={14} strokeWidth={1.75} />
                             </button>
                           </div>
                         )}
@@ -805,7 +796,7 @@ export default function Lists({ cardMap = {} }) {
                     )}
                     <div className={styles.frontShade} />
                     <div className={styles.countBadge}>
-                      <Menu size={13} strokeWidth={2.5} />
+                      <Menu size={12} strokeWidth={1.75} />
                       <span>{(watchlist || []).length}</span>
                     </div>
                   </div>
@@ -843,7 +834,7 @@ export default function Lists({ cardMap = {} }) {
                     )}
                     <div className={styles.frontShade} />
                     <div className={styles.countBadge}>
-                      <Menu size={13} strokeWidth={2.5} />
+                      <Menu size={12} strokeWidth={1.75} />
                       <span>{userLikedIds.length}</span>
                     </div>
                   </div>
@@ -895,7 +886,7 @@ export default function Lists({ cardMap = {} }) {
                           )}
                           <div className={styles.frontShade} />
                           <div className={styles.countBadge}>
-                            <Menu size={13} strokeWidth={2.5} />
+                            <Menu size={12} strokeWidth={1.75} />
                             <span>{count}</span>
                           </div>
                         </div>
@@ -924,19 +915,9 @@ export default function Lists({ cardMap = {} }) {
                           onClick={() => shareCustomList(list.id)}
                           title={`Share ${list.name}`}
                           aria-label={`Share ${list.name}`}
-                          style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            padding: 6,
-                            borderRadius: 6,
-                            background: "none",
-                            border: "none",
-                            color: "rgba(255,255,255,0.65)",
-                            cursor: "pointer",
-                          }}
+                          className={styles.listShareBtn}
                         >
-                          <Share2 size={13} />
+                          <Share2 size={15} strokeWidth={1.75} />
                         </button>
                       </div>
                       <p className={styles.folderSub}>
@@ -969,7 +950,7 @@ export default function Lists({ cardMap = {} }) {
               className={styles.menuItem}
               onClick={() => handleResume(contextMenu.item)}
             >
-              <Play size={14} fill="none" strokeWidth={2} />
+              <Play size={14} fill="none" strokeWidth={1.75} />
               <span>Resume</span>
             </button>
 
@@ -1138,6 +1119,7 @@ export default function Lists({ cardMap = {} }) {
                     type="checkbox"
                     checked={listFormPublic}
                     onChange={(e) => setListFormPublic(e.target.checked)}
+                    style={{ accentColor: "#ffffff" }}
                   />
                   <span>Allow sharing via public link</span>
                 </label>

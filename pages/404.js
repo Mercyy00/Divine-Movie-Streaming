@@ -25,7 +25,7 @@ export default function NotFound() {
             width: "360px",
             height: "360px",
             borderRadius: "50%",
-            background: "radial-gradient(circle, rgba(255, 122, 48, 0.16) 0%, transparent 70%)",
+            background: "radial-gradient(circle, var(--accent-soft, rgba(255, 138, 43, 0.16)) 0%, transparent 70%)",
             filter: "blur(40px)",
             pointerEvents: "none",
             zIndex: 0,
@@ -37,12 +37,12 @@ export default function NotFound() {
         <div style={{ position: "relative", zIndex: 1, marginBottom: 20 }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/loader-leaf.png"
+            src="/brand/favicon.svg"
             alt="DIVINE"
             style={{
               width: 88,
               height: "auto",
-              filter: "drop-shadow(0 8px 24px rgba(255, 122, 48, 0.45))",
+              filter: "drop-shadow(0 8px 24px rgba(255, 138, 43, 0.40))",
             }}
           />
         </div>
@@ -57,7 +57,7 @@ export default function NotFound() {
             fontWeight: 700,
             letterSpacing: "0.15em",
             textTransform: "uppercase",
-            color: "var(--brand-amber, #ff7a30)",
+            color: "var(--accent, #FF8A2B)",
           }}
         >
           404 · Lost In Cinema

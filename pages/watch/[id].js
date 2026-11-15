@@ -703,7 +703,7 @@ function WatchContent({ title: t, id, season, episode, isReady }) {
   const handleShare = async () => {
     if (navigator?.clipboard) {
       await navigator.clipboard.writeText(window.location.href);
-      showToast("Link copied to clipboard!");
+      showToast("Link copied to clipboard");
     }
   };
 
@@ -805,7 +805,7 @@ function WatchContent({ title: t, id, season, episode, isReady }) {
             aria-label={`Back to ${t.title}`}
             title="Title details"
           >
-            <ArrowLeft size={18} />
+            <ArrowLeft size={18} strokeWidth={1.75} />
           </Link>
           <div className={styles.playerWrap}>
             {mode === "trailer" && t.trailerKey ? (
@@ -819,7 +819,7 @@ function WatchContent({ title: t, id, season, episode, isReady }) {
                 />
                 <div className={styles.top}>
                   <Link href={`/title/${t.id}`} className={styles.back}>
-                    <ArrowLeft size={20} />
+                    <ArrowLeft size={20} strokeWidth={1.75} />
                     <span>{t.title}</span>
                   </Link>
                   <button
@@ -827,7 +827,7 @@ function WatchContent({ title: t, id, season, episode, isReady }) {
                     className={`chip ${styles.trailerButton}`}
                     onClick={() => setMode("player")}
                   >
-                    <Tv size={14} />
+                    <Tv size={14} strokeWidth={1.75} />
                     <span>Switch to Player</span>
                   </button>
                 </div>
@@ -894,18 +894,7 @@ function WatchContent({ title: t, id, season, episode, isReady }) {
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
             <h1 className={styles.mainTitle}>{t.title}</h1>
             {t.anilistId && (
-              <span
-                style={{
-                  fontSize: 12,
-                  fontWeight: 600,
-                  padding: "3px 9px",
-                  borderRadius: 12,
-                  background: "rgba(255, 255, 255, 0.08)",
-                  border: "1px solid rgba(255, 255, 255, 0.15)",
-                  color: "#cbd5e1",
-                  letterSpacing: "0.5px",
-                }}
-              >
+              <span className={styles.anilistTag}>
                 AniList #{t.anilistId}
               </span>
             )}
@@ -929,7 +918,7 @@ function WatchContent({ title: t, id, season, episode, isReady }) {
               aria-pressed={userReaction === "like"}
               title="Like this title"
             >
-              <ThumbsUp size={15} />
+              <ThumbsUp size={15} strokeWidth={1.75} />
               <span>{userReaction === "like" ? "Liked" : "Like"}</span>
             </button>
             <div className={styles.likeDivider} />
@@ -941,7 +930,7 @@ function WatchContent({ title: t, id, season, episode, isReady }) {
               aria-pressed={userReaction === "dislike"}
               title="Not for me"
             >
-              <ThumbsDown size={15} />
+              <ThumbsDown size={15} strokeWidth={1.75} />
             </button>
           </div>
 
@@ -955,7 +944,7 @@ function WatchContent({ title: t, id, season, episode, isReady }) {
               showToast(isSaved ? "Removed from watchlist" : "Saved to watchlist");
             }}
           >
-            {isSaved ? <Check size={16} strokeWidth={2.5} /> : <Plus size={16} strokeWidth={2.4} />}
+            {isSaved ? <Check size={16} strokeWidth={1.75} /> : <Plus size={16} strokeWidth={1.75} />}
             <span>{isSaved ? "Saved" : "Save"}</span>
           </button>
 
@@ -1012,7 +1001,7 @@ function WatchContent({ title: t, id, season, episode, isReady }) {
                             ) : (
                               <span className={styles.sourceBadgeOffline}>Offline</span>
                             )}
-                            {isActive && <Check size={13} strokeWidth={2.5} className={styles.sourceCheckIcon} />}
+                            {isActive && <Check size={13} strokeWidth={1.75} className={styles.sourceCheckIcon} />}
                           </div>
                         </button>
                       );
@@ -1076,7 +1065,7 @@ function WatchContent({ title: t, id, season, episode, isReady }) {
             aria-label={isTitleWatched ? "Marked as watched" : "Mark as watched"}
             title={isTitleWatched ? "Watched" : "Mark as watched"}
           >
-            <Check size={16} strokeWidth={2.5} />
+            <Check size={16} strokeWidth={1.75} />
           </button>
 
           {/* Ambient Lighting Toggle */}
@@ -1099,7 +1088,7 @@ function WatchContent({ title: t, id, season, episode, isReady }) {
                 : "Sync ambient lighting to live scene playback"
             }
           >
-            <Sparkles size={16} className={isLiveAmbient ? styles.sparkleLive : ""} />
+            <Sparkles size={16} strokeWidth={1.75} className={isLiveAmbient ? styles.sparkleLive : ""} />
           </button>
         </div>
 
@@ -1142,7 +1131,7 @@ function WatchContent({ title: t, id, season, episode, isReady }) {
               aria-label={`Sort comments by ${commentSort === "top" ? "newest" : "top"}`}
               onClick={() => setCommentSort((prev) => (prev === "top" ? "newest" : "top"))}
             >
-              <ArrowUpDown size={14} strokeWidth={2.4} />
+              <ArrowUpDown size={14} strokeWidth={1.75} />
               <span>{commentSort === "top" ? "Top" : "Newest"}</span>
             </button>
           </div>
@@ -1211,7 +1200,7 @@ function WatchContent({ title: t, id, season, episode, isReady }) {
                 </div>
               ))
             ) : (
-              <p className={styles.emptyCommentsNotice}>No comments yet. Be the first to comment!</p>
+              <p className={styles.emptyCommentsNotice}>No comments yet. Be the first to share a thought.</p>
             )}
           </div>
         </div>
@@ -1258,7 +1247,7 @@ function WatchContent({ title: t, id, season, episode, isReady }) {
                           }}
                         >
                           <span className={styles.seasonOptionNumber}>Season {sNum}</span>
-                          {isCurrent && <Check size={13} strokeWidth={2.5} className={styles.sourceCheckIcon} />}
+                          {isCurrent && <Check size={13} strokeWidth={1.75} className={styles.sourceCheckIcon} />}
                         </button>
                       );
                     })}
@@ -1274,7 +1263,7 @@ function WatchContent({ title: t, id, season, episode, isReady }) {
                   disabled={currentEpisode <= 1}
                   aria-label="Previous episode"
                 >
-                  <ChevronLeft size={16} />
+                  <ChevronLeft size={16} strokeWidth={1.75} />
                 </button>
                 <button
                   type="button"
@@ -1283,7 +1272,7 @@ function WatchContent({ title: t, id, season, episode, isReady }) {
                   disabled={!hasNext}
                   aria-label="Next episode"
                 >
-                  <ChevronRight size={16} />
+                  <ChevronRight size={16} strokeWidth={1.75} />
                 </button>
               </div>
             </div>
@@ -1322,7 +1311,7 @@ function WatchContent({ title: t, id, season, episode, isReady }) {
                       />
                       {isEpWatched && (
                         <span className={styles.epCheckBadge}>
-                          <Check size={12} strokeWidth={3} />
+                          <Check size={12} strokeWidth={1.75} />
                         </span>
                       )}
                     </div>
