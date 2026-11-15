@@ -231,7 +231,7 @@ export default function SearchPalette({ autoFocus = false, wide = false, onNavig
           id={wide ? "spotlight-search" : "site-search"}
           className={styles.input}
           type="search"
-          placeholder="Search movies, series, anime, people…"
+          placeholder="Search"
           value={q}
           autoComplete="off"
           autoCorrect="off"
@@ -245,7 +245,7 @@ export default function SearchPalette({ autoFocus = false, wide = false, onNavig
           aria-expanded={open}
           aria-controls={wide ? "spotlight-search-listbox" : "search-listbox"}
           aria-activedescendant={active >= 0 ? `sr-${active}` : undefined}
-          aria-label="Search"
+          aria-label="Search movies, series, anime, people"
           onFocus={() => setOpen(true)}
           onChange={(e) => {
             setQ(e.target.value);
@@ -290,6 +290,7 @@ export default function SearchPalette({ autoFocus = false, wide = false, onNavig
           className={styles.drop}
           id={wide ? "spotlight-search-listbox" : "search-listbox"}
           role="listbox"
+          data-lenis-prevent
         >
           {didYouMean && (
             <div className={styles.didYouMean}>

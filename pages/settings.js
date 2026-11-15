@@ -32,6 +32,8 @@ import {
   updateProfile,
   PROFILE_AVATARS,
   DEFAULT_SETTINGS,
+  getGuestId,
+  clearAllLocalData,
 } from "../lib/store";
 import { AVATAR_CATEGORIES } from "../lib/avatars";
 import styles from "../styles/Settings.module.css";
@@ -402,12 +404,26 @@ export default function SettingsPage() {
           return;
         }
         Object.keys(localStorage)
-          .filter((k) => k.startsWith("viv:"))
+          .filter((k) => k.startsWith("viv:") || k === "divine:guest-id")
           .forEach((k) => localStorage.removeItem(k));
         signOut({ callbackUrl: "/" });
         return;
       } catch {
         showToast("Network error deleting account");
+        return;
+      }
+    } else if (dialogMode === "delete-guest-data") {
+      try {
+        const guestId = getGuestId();
+        if (guestId) {
+          await fetch(`/api/guest/${encodeURIComponent(guestId)}`, { method: "DELETE" }).catch(() => {});
+        }
+        clearAllLocalData();
+        setHistory([]);
+        setWatchlist([]);
+        showToast("Guest history and local data erased");
+      } catch {
+        showToast("Could not delete guest data");
         return;
       }
     }
@@ -1669,12 +1685,48 @@ export default function SettingsPage() {
                     </button>
                   )}
 
+                  {authStatus !== "authenticated" && matchesSearch("Share watch history with the site") && (
+                    <div className={styles.settingRow}>
+                      <div className={styles.settingLeft}>
+                        <span className={styles.settingLabel}>Share watch history with the site</span>
+                        <span className={styles.settingSub}>
+                          Syncs guest playback progress so resume works reliably. Turn off to keep watch history browser-only.
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={settings.shareGuestHistory !== false}
+                        aria-label="Share watch history with the site"
+                        className={`${styles.toggleSwitch} ${
+                          settings.shareGuestHistory !== false ? styles.toggleSwitchOn : ""
+                        }`}
+                        onClick={() => {
+                          const next = settings.shareGuestHistory === false;
+                          setSettings((s) => ({ ...s, shareGuestHistory: next }));
+                          showToast(next ? "Guest watch history sync enabled" : "Guest watch history sync paused");
+                        }}
+                      >
+                        <span className={styles.toggleKnob} />
+                      </button>
+                    </div>
+                  )}
+
                   <button type="button" className={styles.actionRowBtn} onClick={exportData}>
                     <span>Export my data (JSON)</span>
                   </button>
-                  {authStatus === "authenticated" && (
+                  {authStatus === "authenticated" ? (
                     <button type="button" className={`${styles.actionRowBtn} ${styles.dangerAction}`} onClick={deleteAccount}>
                       <span>Delete account</span>
+                      <Trash2 size={16} />
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className={`${styles.actionRowBtn} ${styles.dangerAction}`}
+                      onClick={() => setDialogMode("delete-guest-data")}
+                    >
+                      <span>Delete my data</span>
                       <Trash2 size={16} />
                     </button>
                   )}
@@ -1778,6 +1830,7 @@ export default function SettingsPage() {
                 {dialogMode === "reset-all" && "Reset All Settings?"}
                 {dialogMode === "signout-all" && "Sign Out of All Devices?"}
                 {dialogMode === "delete-account" && "Delete Account Permanently"}
+                {dialogMode === "delete-guest-data" && "Delete Guest Data?"}
               </h3>
 
               {dialogMode === "email" && (
@@ -1868,6 +1921,12 @@ export default function SettingsPage() {
                 </p>
               )}
 
+              {dialogMode === "delete-guest-data" && (
+                <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 14, margin: "0 0 18px" }}>
+                  This will erase your guest watch history, watchlist, lists, and guest record from this device and the server.
+                </p>
+              )}
+
               <div className={styles.miniDialogActions}>
                 <button
                   type="button"
@@ -1879,7 +1938,10 @@ export default function SettingsPage() {
                 <button
                   type="button"
                   className={`${styles.dialogConfirm} ${
-                    dialogMode.includes("clear") || dialogMode.includes("reset") || dialogMode.includes("signout") || dialogMode === "delete-account"
+                    dialogMode.includes("clear") ||
+                    dialogMode.includes("reset") ||
+                    dialogMode.includes("signout") ||
+                    dialogMode.includes("delete")
                       ? styles.dialogConfirmDanger
                       : ""
                   }`}

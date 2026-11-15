@@ -904,6 +904,18 @@
   outline: none;
 }
 
+.wideStage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+}
+
+.wideStage .wideThumbnail {
+  position: absolute;
+  inset: 0;
+  aspect-ratio: auto;
+}
+
 .wideThumbnail {
   position: relative;
   aspect-ratio: 16 / 9;
@@ -913,6 +925,7 @@
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(255, 255, 255, 0.1);
   transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
     box-shadow 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  z-index: 1;
 }
 
 .wideCard:hover .wideThumbnail {
@@ -925,6 +938,12 @@
   height: 100%;
   object-fit: cover;
   display: block;
+  transform: scale(1);
+  transition: transform 0.42s var(--ease-out);
+}
+
+.wideCard:hover .wideImg {
+  transform: scale(1.05);
 }
 
 .thumbShade {
@@ -1019,6 +1038,8 @@
   left: 12px;
   right: 12px;
   bottom: 10px;
+  z-index: 2;
+  pointer-events: none;
   font-weight: 600;
   font-size: 15px;
   color: #ffffff;

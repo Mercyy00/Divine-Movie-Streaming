@@ -2,6 +2,7 @@ import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import Header, { MobileNav } from "./Header";
+import PrivacyBanner from "./PrivacyBanner";
 import { BRAND } from "../lib/constants";
 import styles from "./Layout.module.css";
 
@@ -85,6 +86,7 @@ export default function Layout({
           />
         </p>
       </footer>
+      <PrivacyBanner />
       <MobileNav />
     </>
   );

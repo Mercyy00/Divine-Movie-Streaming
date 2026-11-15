@@ -195,3 +195,57 @@ test("buildDynamicNotifications supports custom live new releases and recommenda
   assert.equal(superman.badge, "Blockbuster");
   assert.equal(superman.href, "/title/superman-legacy");
 });
+
+test("buildDynamicNotifications unwraps nested title card objects without [object Object]", () => {
+  const todayStr = new Date().toISOString().split("T")[0];
+  const history = [
+    {
+      id: "movie-thunderbolts-986056",
+      progress: 0.4,
+      watchedAt: Date.now(),
+      title: {
+        id: "movie-thunderbolts-986056",
+        title: "Thunderbolts*",
+        type: "movie",
+      },
+    },
+    {
+      id: "series-andor-83867",
+      progress: 0.8,
+      watchedAt: Date.now() - 5000,
+      title: {
+        id: "series-andor-83867",
+        title: "Andor",
+        type: "series",
+        nextEpisodeToAir: {
+          airDate: todayStr,
+          seasonNumber: 2,
+          episodeNumber: 4,
+        },
+      },
+    },
+  ];
+
+  const recommendations = [
+    { id: "interstellar", title: "Interstellar", poster: "/interstellar.jpg" },
+    { id: "oppenheimer", title: "Oppenheimer", poster: "/oppenheimer.jpg" },
+  ];
+
+  const result = buildDynamicNotifications({
+    history,
+    recommendations,
+    includeRecommendations: true,
+  });
+
+  const recNotif = result.all.find((n) => n.type === "recommendation");
+  assert.ok(recNotif);
+  assert.equal(recNotif.title, "Interstellar");
+  assert.ok(!recNotif.subtitle.includes("[object Object]"));
+  assert.match(recNotif.subtitle, /Because you watched Thunderbolts\*/);
+
+  const epNotif = result.all.find((n) => n.type === "episode");
+  assert.ok(epNotif);
+  assert.equal(epNotif.title, "Andor");
+  assert.equal(typeof epNotif.title, "string");
+});
+

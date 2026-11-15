@@ -637,16 +637,49 @@ export default function MediaCard({
         aria-label={title.title}
         onFocus={prefetchTitleRoute}
       >
-        <span className={styles.art}>
-          <Art
-            title={title}
-            variant={wide ? "backdrop" : "poster"}
-            showTitle={false}
-            className={styles.img}
-          />
-          <span className={styles.shade} />
+        <span className={styles.artStage}>
+          <span className={styles.art}>
+            <Art
+              title={title}
+              variant={wide ? "backdrop" : "poster"}
+              showTitle={false}
+              className={styles.img}
+            />
+            <span className={styles.shade} />
 
-          {/* Title treatment on the tile (Logo PNG or stylized title text) */}
+            {/* Top-left Notch Cutout (Rank, badge, New episode) */}
+            {rank ? (
+              <span className={styles.notch}>
+                <span className={styles.badgeRank}>{rank}</span>
+              </span>
+            ) : activeBadge ? (
+              <span className={styles.notch}>
+                <span
+                  className={
+                    activeBadge.toLowerCase() === "cam"
+                      ? styles.badgeCam
+                      : activeBadge.toLowerCase() === "new episode"
+                      ? styles.badgeNew
+                      : styles.badgeHd
+                  }
+                >
+                  {activeBadge.toLowerCase() === "cam" ? "Cam" : activeBadge}
+                </span>
+              </span>
+            ) : null}
+
+            <span className={styles.hoverPlay}>
+              <Play size={18} fill="currentColor" strokeWidth={1.75} />
+            </span>
+
+            {typeof progress === "number" && progress > 0 && (
+              <span className={styles.progress}>
+                <i style={{ width: `${Math.round(progress * 100)}%` }} />
+              </span>
+            )}
+          </span>
+
+          {/* Title treatment on the tile (anchored statically so tile animation never shifts it) */}
           {wide && (
             <span className={styles.tileTitleWrap}>
               {activeLogo && !logoFailed ? (
@@ -665,37 +698,6 @@ export default function MediaCard({
                   {title.title}
                 </span>
               )}
-            </span>
-          )}
-
-          {/* Top-left Notch Cutout (Rank, badge, New episode) */}
-          {rank ? (
-            <span className={styles.notch}>
-              <span className={styles.badgeRank}>{rank}</span>
-            </span>
-          ) : activeBadge ? (
-            <span className={styles.notch}>
-              <span
-                className={
-                  activeBadge.toLowerCase() === "cam"
-                    ? styles.badgeCam
-                    : activeBadge.toLowerCase() === "new episode"
-                    ? styles.badgeNew
-                    : styles.badgeHd
-                }
-              >
-                {activeBadge.toLowerCase() === "cam" ? "Cam" : activeBadge}
-              </span>
-            </span>
-          ) : null}
-
-          <span className={styles.hoverPlay}>
-            <Play size={18} fill="currentColor" strokeWidth={1.75} />
-          </span>
-
-          {typeof progress === "number" && progress > 0 && (
-            <span className={styles.progress}>
-              <i style={{ width: `${Math.round(progress * 100)}%` }} />
             </span>
           )}
         </span>

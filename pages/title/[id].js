@@ -1729,19 +1729,21 @@ function TitleContent({ t, id }) {
                     href={`/collection/${t.collection.id}`}
                     className={styles.wideCard}
                   >
-                    <div className={styles.wideThumbnail}>
-                      {t.collection.backdrop && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={t.collection.backdrop}
-                          alt={t.collection.name}
-                          loading="lazy"
-                          decoding="async"
-                          className={styles.wideImg}
-                        />
-                      )}
-                      <div className={styles.thumbShade} />
-                      <span className={styles.topBadge}>Collection</span>
+                    <div className={styles.wideStage}>
+                      <div className={styles.wideThumbnail}>
+                        {t.collection.backdrop && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={t.collection.backdrop}
+                            alt={t.collection.name}
+                            loading="lazy"
+                            decoding="async"
+                            className={styles.wideImg}
+                          />
+                        )}
+                        <div className={styles.thumbShade} />
+                        <span className={styles.topBadge}>Collection</span>
+                      </div>
                       <div className={styles.cardTitleBottom}>
                         {t.collection.name}
                         <span className={styles.cardSubBottom}>
@@ -1840,26 +1842,28 @@ function TitleContent({ t, id }) {
                       href={`/title/${sim.id}`}
                       className={styles.wideCard}
                     >
-                      <div className={styles.wideThumbnail}>
-                        {sim.backdrop ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={sim.backdrop}
-                            alt={sim.title}
-                            loading="lazy"
-                            decoding="async"
-                            referrerPolicy="no-referrer"
-                            className={styles.wideImg}
-                          />
-                        ) : (
+                      <div className={styles.wideStage}>
+                        <div className={styles.wideThumbnail}>
+                          {sim.backdrop ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={sim.backdrop}
+                              alt={sim.title}
+                              loading="lazy"
+                              decoding="async"
+                              referrerPolicy="no-referrer"
+                              className={styles.wideImg}
+                            />
+                          ) : (
+                            <div className={styles.thumbShade} />
+                          )}
                           <div className={styles.thumbShade} />
-                        )}
-                        <div className={styles.thumbShade} />
-                        {sim.quality && (
-                          <span className={styles.notch}>
-                            <span className={styles.badgeHd}>{sim.quality}</span>
-                          </span>
-                        )}
+                          {sim.quality && (
+                            <span className={styles.notch}>
+                              <span className={styles.badgeHd}>{sim.quality}</span>
+                            </span>
+                          )}
+                        </div>
                         <div className={styles.cardTitleBottom}>
                           {sim.title}
                         </div>

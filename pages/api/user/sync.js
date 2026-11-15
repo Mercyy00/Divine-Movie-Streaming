@@ -1,10 +1,18 @@
 import { prisma } from "../../../lib/prisma";
 import { requireUser } from "../../../lib/session";
+import { applyApiGuard } from "../../../lib/api-guard";
+import { isSameOriginRequest } from "../../../lib/adminAuth";
 
 const MAX_ITEMS = 500;
 const idOf = (e) => (typeof e === "string" ? e : e?.id);
 
 export default async function handler(req, res) {
+  if (req.method === "PUT" && !isSameOriginRequest(req).ok) {
+    return res.status(403).json({ error: "Invalid request origin" });
+  }
+  if (!(await applyApiGuard(req, res, { cacheSeconds: 0, limit: 60, windowMs: 60000, prefix: "user_sync" }))) {
+    return;
+  }
   const user = await requireUser(req, res);
   if (!user) return;
   res.setHeader("Cache-Control", "no-store");

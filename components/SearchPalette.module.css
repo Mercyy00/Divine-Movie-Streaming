@@ -16,17 +16,17 @@
   height: var(--bar-ctl, 46px);
   font-family: var(--font-body);
   font-size: 14px;
-  color: var(--text, #ffffff);
-  background: var(--g-fill);
+  color: #ffffff;
+  background: var(--g-bar-fill);
   border-radius: var(--radius-pill, 999px);
-  border: 1px solid var(--hairline, rgba(255, 214, 170, 0.10));
-  box-shadow: var(--g-edge);
+  border: 1px solid var(--g-border, rgba(255, 236, 216, 0.15));
+  box-shadow: var(--g-bar-edge);
   padding: 0 0 0 20px;
   overflow: hidden;
   position: relative;
   cursor: text;
-  backdrop-filter: var(--g-blur);
-  -webkit-backdrop-filter: var(--g-blur);
+  backdrop-filter: var(--g-bar-blur);
+  -webkit-backdrop-filter: var(--g-bar-blur);
   transition:
     background 0.2s ease,
     border-color 0.2s ease,
@@ -34,21 +34,21 @@
 }
 
 .dockField:hover {
-  background: var(--g-fill-hover);
-  border-color: var(--hairline-strong, rgba(255, 214, 170, 0.20));
-  box-shadow: var(--g-edge-hover);
+  background: var(--g-bar-fill-hover);
+  border-color: var(--g-border-hover, rgba(255, 240, 224, 0.26));
+  box-shadow: var(--g-bar-edge-hover);
 }
 
 .dockField:focus-within {
-  background: linear-gradient(180deg, rgba(255, 235, 210, 0.14) 0%, rgba(255, 235, 210, 0.04) 100%), rgba(26, 18, 13, 0.84);
-  border-color: rgba(var(--accent-rgb, 255, 138, 43), 0.36);
-  box-shadow: inset 0 1px 0 rgba(255, 230, 200, 0.26), 0 12px 32px -8px rgba(0, 0, 0, 0.65), 0 0 12px var(--accent-halo, rgba(255, 138, 43, 0.08));
+  background: linear-gradient(180deg, rgba(255, 244, 232, 0.16) 0%, rgba(255, 200, 150, 0.04) 100%), rgba(22, 18, 15, 0.56);
+  border-color: rgba(255, 242, 228, 0.32);
+  box-shadow: var(--g-bar-edge-hover);
 }
 
 .searchDivider {
   width: 1px;
-  height: 20px;
-  background: var(--hairline, rgba(255, 214, 170, 0.12));
+  height: 22px;
+  background: rgba(255, 238, 220, 0.16);
   flex-shrink: 0;
   margin: 0 2px;
 }
@@ -57,11 +57,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 48px;
+  width: 50px;
   height: 100%;
   background: transparent;
   border: none;
-  color: var(--text-dim, rgba(255, 240, 224, 0.72));
+  color: rgba(255, 246, 236, 0.94);
   cursor: pointer;
   flex-shrink: 0;
   transition: background 0.18s ease, color 0.18s ease;
@@ -69,12 +69,12 @@
 }
 
 .searchSubmitBtn:hover {
-  background: rgba(255, 235, 210, 0.08);
-  color: var(--text, #FFF6EC);
+  background: rgba(255, 242, 228, 0.10);
+  color: #ffffff;
 }
 
 .searchSubmitBtn:focus-visible {
-  outline: 2px solid rgba(var(--accent-rgb, 255, 138, 43), 0.72);
+  outline: 2px solid rgba(255, 255, 255, 0.72);
   outline-offset: -2px;
 }
 
@@ -82,7 +82,7 @@
   min-width: 0;
   font-family: inherit;
   font-size: 14px;
-  color: var(--text, #FFF6EC);
+  color: #ffffff;
   flex: 1 1 0%;
   font-weight: 500;
   height: 100%;
@@ -92,6 +92,7 @@
   background: transparent;
   -webkit-appearance: none;
   appearance: none;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.28);
 }
 
 .input:focus,
@@ -102,8 +103,8 @@
 }
 
 .input::placeholder {
-  color: var(--text-faint, rgba(255, 240, 224, 0.50));
-  font-weight: 400;
+  color: rgba(255, 255, 255, 0.78);
+  font-weight: 500;
 }
 
 .input::-webkit-search-cancel-button {
@@ -157,13 +158,14 @@
 
 .drop {
   border-radius: var(--radius-panel, 20px);
-  background: linear-gradient(180deg, rgba(255, 235, 210, 0.07) 0%, rgba(255, 235, 210, 0.015) 100%), rgba(20, 14, 10, 0.94);
-  border: 1px solid var(--hairline-strong, rgba(255, 214, 170, 0.16));
+  background: var(--g-panel-fill, linear-gradient(180deg, rgba(255, 242, 228, 0.07) 0%, rgba(255, 210, 170, 0.015) 100%), rgba(14, 12, 11, 0.86));
+  border: 1px solid var(--g-border, rgba(255, 236, 216, 0.15));
   box-shadow:
-    inset 0 1px 0 rgba(255, 230, 200, 0.18),
+    inset 0 1px 0 rgba(255, 244, 232, 0.20),
+    inset 0 -1px 0 rgba(255, 215, 180, 0.05),
     0 24px 60px -12px rgba(0, 0, 0, 0.78);
-  backdrop-filter: blur(28px) saturate(170%);
-  -webkit-backdrop-filter: blur(28px) saturate(170%);
+  backdrop-filter: var(--g-bar-blur, blur(30px) saturate(185%));
+  -webkit-backdrop-filter: var(--g-bar-blur, blur(30px) saturate(185%));
   max-height: min(70vh, 520px);
   position: absolute;
   top: calc(100% + 12px);
@@ -403,9 +405,21 @@
 }
 
 @media (max-width: 768px) {
-  .wipe {
-    width: 44px;
+  .dockField {
     height: 44px;
+    padding-left: 14px;
+  }
+  .searchSubmitBtn {
+    width: 44px;
+  }
+  .drop {
+    left: 0;
+    right: -48px;
+    width: min(440px, calc(100vw - 24px));
+  }
+  .wipe {
+    width: 40px;
+    height: 40px;
   }
   .clear {
     min-height: 44px;

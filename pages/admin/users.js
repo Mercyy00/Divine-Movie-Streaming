@@ -1,87 +1,119 @@
 import { useSession } from "next-auth/react";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "../../lib/auth";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { getAdminPageProps } from "../../lib/session";
 import Layout from "../../components/Layout";
 import LoadingScreen from "../../components/LoadingScreen";
 import AdminNav from "../../components/AdminNav";
+import AdminAccessGate from "../../components/AdminAccessGate";
 import { useToast } from "../../lib/useToast";
-import { Shield, ShieldAlert, UserX, UserCheck, ShieldCheck, ArrowLeft, Search } from "lucide-react";
+import {
+  Users,
+  UserCheck,
+  Ghost,
+  Activity,
+  Calendar,
+  Search,
+  Download,
+  ShieldCheck,
+  Ban,
+  CheckCircle2,
+  Trash2,
+  Eye,
+} from "lucide-react";
+import styles from "../../styles/Admin.module.css";
 
 export async function getServerSideProps(context) {
-  const session = await getServerSession(context.req, context.res, authOptions);
-  if (!session || session.user?.role !== "ADMIN") {
-    context.res.statusCode = 403;
-    return {
-      props: {
-        authorized: false,
-        signedInEmail: session?.user?.email || null,
-        currentRole: session?.user?.role || null,
-      },
-    };
+  const access = await getAdminPageProps(context);
+  const role = access.currentRole;
+  if (!access.authorized || role !== "ADMIN") {
+    return { props: { ...access, authorized: false } };
   }
-  return { props: { authorized: true } };
+  return { props: access };
 }
 
-export default function AdminUsersPage({ authorized = false, signedInEmail = null, currentRole = null }) {
-  const { data: session, status } = useSession();
-  const [users, setUsers] = useState([]);
+function formatDate(iso) {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+export default function AdminUsersPage({
+  authorized = false,
+  dbConfigured = true,
+  signedInEmail = null,
+  currentRole = null,
+  emailVerified = false,
+}) {
+  const { data: session, status: authStatus } = useSession();
+  const [data, setData] = useState({
+    items: [],
+    total: 0,
+    page: 1,
+    pageSize: 25,
+    totalPages: 1,
+    summary: { totalPeople: 0, signedInUsers: 0, guests: 0, active24h: 0, active7d: 0, newThisWeek: 0 },
+  });
   const [loading, setLoading] = useState(Boolean(authorized));
-  const [search, setSearch] = useState("");
   const [toast, showToast] = useToast(2500);
 
-  const fetchUsers = async () => {
+  // Filters & pagination
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [methodFilter, setMethodFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [dateRange, setDateRange] = useState("all");
+  const [sortBy, setSortBy] = useState("lastActive");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+
+  const fetchPeople = useCallback(async () => {
+    if (!authorized) return;
     try {
-      const res = await fetch("/api/admin/users");
+      const params = new URLSearchParams({
+        q: search,
+        type: typeFilter,
+        method: methodFilter,
+        status: statusFilter,
+        dateRange,
+        sort: sortBy,
+        order: "desc",
+        page: String(page),
+        pageSize: String(pageSize),
+      });
+      const res = await fetch(`/api/admin/people?${params}`);
       if (res.ok) {
-        const data = await res.json();
-        setUsers(Array.isArray(data) ? data : []);
+        const json = await res.json();
+        setData(json);
       }
     } catch {}
     setLoading(false);
-  };
+  }, [authorized, search, typeFilter, methodFilter, statusFilter, dateRange, sortBy, page, pageSize]);
 
   useEffect(() => {
-    if (authorized && status === "authenticated" && session?.user?.role === "ADMIN") {
-      fetchUsers();
-    } else if (status !== "loading") {
+    if (authorized && authStatus === "authenticated" && session?.user?.role === "ADMIN") {
+      fetchPeople();
+    } else if (authStatus !== "loading") {
       setLoading(false);
     }
-  }, [authorized, status, session]);
+  }, [authorized, authStatus, session, fetchPeople]);
 
-  const handleToggleRole = async (user) => {
+  const handleToggleBan = async (person) => {
+    const isBanned = person.status === "banned";
     try {
-      const res = await fetch("/api/admin/users", {
+      const res = await fetch(`/api/admin/users/${encodeURIComponent(person.id)}/ban`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "toggle-role", userId: user.id }),
+        body: JSON.stringify({ banned: !isBanned }),
       });
-      const d = await res.json();
+      const d = await res.json().catch(() => ({}));
       if (res.ok) {
-        showToast(`Role updated to ${d.role}`);
-        fetchUsers();
-      } else {
-        showToast(d.error || "Failed to update role");
-      }
-    } catch {
-      showToast("Network error updating role");
-    }
-  };
-
-  const handleToggleBan = async (user) => {
-    const isBanned = Boolean(user.bannedAt);
-    const action = isBanned ? "unban" : "ban";
-    try {
-      const res = await fetch("/api/admin/users", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, userId: user.id }),
-      });
-      const d = await res.json();
-      if (res.ok) {
-        showToast(isBanned ? `Unbanned @${user.username || user.name}` : `Banned @${user.username || user.name}`);
-        fetchUsers();
+        showToast(isBanned ? `Unbanned ${person.displayName}` : `Banned ${person.displayName}`);
+        fetchPeople();
       } else {
         showToast(d.error || "Failed to update ban status");
       }
@@ -90,291 +122,302 @@ export default function AdminUsersPage({ authorized = false, signedInEmail = nul
     }
   };
 
-  if (authorized && (status === "loading" || loading)) {
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    try {
+      const res = await fetch(
+        `/api/admin/people/${encodeURIComponent(deleteTarget.id)}?kind=${deleteTarget.entityType}`,
+        { method: "DELETE" }
+      );
+      const d = await res.json().catch(() => ({}));
+      if (res.ok) {
+        showToast(`Deleted ${deleteTarget.displayName}`);
+        setDeleteTarget(null);
+        fetchPeople();
+      } else {
+        showToast(d.error || "Could not delete person");
+      }
+    } catch {
+      showToast("Network error");
+    }
+  };
+
+  const exportUrl = `/api/admin/export?${new URLSearchParams({
+    q: search,
+    type: typeFilter,
+    method: methodFilter,
+    status: statusFilter,
+    dateRange,
+    sort: sortBy,
+    order: "desc",
+  }).toString()}`;
+
+  if (authorized && (authStatus === "loading" || loading)) {
     return (
-      <Layout title="Admin · Users">
-        <LoadingScreen minHeight="60vh" message="Loading administration dashboard…" />
+      <Layout title="Admin · People">
+        <LoadingScreen minHeight="60vh" message="Loading people directory…" />
       </Layout>
     );
   }
 
-  const isAdmin = authorized && status === "authenticated" && session?.user?.role === "ADMIN";
-  const activeEmail = session?.user?.email || signedInEmail;
-  const activeRole = session?.user?.role || currentRole;
+  const isAdmin = authorized && currentRole === "ADMIN" && authStatus === "authenticated" && session?.user?.role === "ADMIN";
 
   if (!isAdmin) {
     return (
-      <Layout title="Admin · Access Required">
-        <div
-          style={{
-            maxWidth: 500,
-            margin: "96px auto",
-            textAlign: "center",
-            padding: "32px 28px",
-            borderRadius: 20,
-            background: "var(--g-fill, rgba(255,255,255,0.06))",
-            border: "1px solid var(--g-edge, rgba(255,255,255,0.14))",
-            backdropFilter: "var(--g-blur, blur(24px))",
-          }}
-        >
-          <ShieldAlert size={44} color="var(--amber, #FFC84A)" style={{ margin: "0 auto 14px" }} />
-          <h1 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 10px" }}>Administrator Access Required</h1>
-          {activeEmail ? (
-            <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 14, lineHeight: 1.55, margin: "0 0 22px" }}>
-              Signed in as <strong>{activeEmail}</strong> (Role: <code>{activeRole || "USER"}</code>).
-              {" "}To grant administrator access, add this email to <code>ADMIN_EMAILS</code> in your environment or ask an existing admin to promote your account.
-            </p>
-          ) : (
-            <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 14, lineHeight: 1.55, margin: "0 0 22px" }}>
-              Sign in with an administrator account to manage users and roles. Set <code>ADMIN_EMAILS</code> in your server environment to designate admin accounts.
-            </p>
-          )}
-          <div style={{ display: "flex", justifyContent: "center", gap: 10, flexWrap: "wrap" }}>
-            {!activeEmail && (
-              <Link
-                href="/auth/signin?callbackUrl=/admin/users"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  height: 38,
-                  padding: "0 20px",
-                  borderRadius: 999,
-                  background: "#ffffff",
-                  color: "var(--on-accent, #0A0807)",
-                  fontWeight: 700,
-                  fontSize: 14,
-                  textDecoration: "none",
-                }}
-              >
-                Sign in
-              </Link>
-            )}
-            <Link
-              href="/"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-                height: 38,
-                padding: "0 18px",
-                borderRadius: 999,
-                background: "var(--g-fill, rgba(255,255,255,0.08))",
-                border: "1px solid var(--g-edge, rgba(255,255,255,0.16))",
-                color: "#ffffff",
-                fontWeight: 600,
-                fontSize: 14,
-                textDecoration: "none",
-              }}
-            >
-              <ArrowLeft size={15} />
-              <span>Return Home</span>
-            </Link>
-          </div>
-        </div>
-      </Layout>
+      <AdminAccessGate
+        dbConfigured={dbConfigured}
+        signedInEmail={session?.user?.email || signedInEmail}
+        currentRole={session?.user?.role || currentRole}
+        emailVerified={Boolean(session?.user?.emailVerified || emailVerified)}
+        callbackUrl="/admin/users"
+      />
     );
   }
 
-  const filteredUsers = users.filter((u) => {
-    if (!search.trim()) return true;
-    const q = search.toLowerCase().trim();
-    return (
-      (u.name && u.name.toLowerCase().includes(q)) ||
-      (u.username && u.username.toLowerCase().includes(q)) ||
-      (u.email && u.email.toLowerCase().includes(q))
-    );
-  });
+  const summary = data.summary || {};
 
   return (
-    <Layout title="Admin · User Management">
-      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "40px var(--page-pad) 80px" }}>
+    <Layout title="Admin · People">
+      <div className={styles.page}>
         <AdminNav activeTab="users" />
 
-        {/* Top Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16, marginBottom: 28 }}>
+        <div className={styles.headerRow}>
           <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <Shield size={24} color="var(--accent, #FF8A2B)" />
-              <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0 }}>User Administration</h1>
-            </div>
-            <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 14, margin: "6px 0 0" }}>
-              Manage accounts, roles, and access controls across the platform.
+            <h2 className={styles.pageTitle}>People Directory</h2>
+            <p className={styles.pageSub}>
+              Unified list of signed-in users and browser guests. Click any person to view their watch history.
             </p>
           </div>
-
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ position: "relative" }}>
-              <Search size={14} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.4)" }} />
-              <input
-                type="text"
-                placeholder="Search user, email..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                style={{
-                  background: "var(--surface-2, #17110E)",
-                  border: "1px solid var(--hairline, rgba(255, 214, 170, 0.12))",
-                  borderRadius: 8,
-                  padding: "8px 14px 8px 34px",
-                  fontSize: 13,
-                  color: "#fff",
-                  outline: "none",
-                  width: 220,
-                }}
-              />
-            </div>
-          </div>
+          <a href={exportUrl} className={styles.glassBtn}>
+            <Download size={15} />
+            <span>Export CSV</span>
+          </a>
         </div>
 
-        {/* User Table */}
-        <div
-          style={{
-            background: "var(--surface-1, #100C0A)",
-            border: "1px solid var(--hairline, rgba(255, 214, 170, 0.10))",
-            borderRadius: 14,
-            overflow: "hidden",
-          }}
-        >
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: 13 }}>
+        {/* Summary KPI Cards */}
+        <section className={styles.kpiGrid}>
+          <div className={styles.kpiCard}>
+            <span className={styles.kpiLabel}><Users size={14} /> Total People</span>
+            <span className={styles.kpiValue}>{summary.totalPeople ?? 0}</span>
+          </div>
+          <div className={styles.kpiCard}>
+            <span className={styles.kpiLabel}><UserCheck size={14} /> Signed-in Users</span>
+            <span className={styles.kpiValue}>{summary.signedInUsers ?? 0}</span>
+          </div>
+          <div className={styles.kpiCard}>
+            <span className={styles.kpiLabel}><Ghost size={14} /> Guests</span>
+            <span className={styles.kpiValue}>{summary.guests ?? 0}</span>
+          </div>
+          <div className={styles.kpiCard}>
+            <span className={styles.kpiLabel}><Activity size={14} /> Active 24h</span>
+            <span className={styles.kpiValue}>{summary.active24h ?? 0}</span>
+          </div>
+          <div className={styles.kpiCard}>
+            <span className={styles.kpiLabel}><Activity size={14} /> Active 7d</span>
+            <span className={styles.kpiValue}>{summary.active7d ?? 0}</span>
+          </div>
+          <div className={styles.kpiCard}>
+            <span className={styles.kpiLabel}><Calendar size={14} /> New This Week</span>
+            <span className={styles.kpiValue}>{summary.newThisWeek ?? 0}</span>
+          </div>
+        </section>
+
+        {/* Filters & Search Toolbar */}
+        <section className={styles.toolbar}>
+          <div className={styles.searchWrap}>
+            <Search size={14} className={styles.searchIcon} />
+            <input
+              type="text"
+              className={styles.searchInput}
+              placeholder="Search name, email, username, country, guest ID…"
+              aria-label="Search people"
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
+            />
+          </div>
+
+          <select
+            aria-label="Filter by type"
+            className={styles.selectInput}
+            value={typeFilter}
+            onChange={(e) => {
+              setTypeFilter(e.target.value);
+              setPage(1);
+            }}
+          >
+            <option value="all">All types</option>
+            <option value="user">Users</option>
+            <option value="guest">Guests</option>
+            <option value="admin">Admin</option>
+          </select>
+
+          <select
+            aria-label="Filter by sign-in method"
+            className={styles.selectInput}
+            value={methodFilter}
+            onChange={(e) => {
+              setMethodFilter(e.target.value);
+              setPage(1);
+            }}
+          >
+            <option value="all">All methods</option>
+            <option value="google">Google</option>
+            <option value="email">Email</option>
+            <option value="guest">Guest</option>
+          </select>
+
+          <select
+            aria-label="Filter by status"
+            className={styles.selectInput}
+            value={statusFilter}
+            onChange={(e) => {
+              setStatusFilter(e.target.value);
+              setPage(1);
+            }}
+          >
+            <option value="all">All statuses</option>
+            <option value="active">Active</option>
+            <option value="banned">Banned</option>
+          </select>
+
+          <select
+            aria-label="Filter by date range"
+            className={styles.selectInput}
+            value={dateRange}
+            onChange={(e) => {
+              setDateRange(e.target.value);
+              setPage(1);
+            }}
+          >
+            <option value="all">All time</option>
+            <option value="24h">Active 24h</option>
+            <option value="7d">Active 7d</option>
+            <option value="30d">Active 30d</option>
+          </select>
+
+          <select
+            aria-label="Sort people"
+            className={styles.selectInput}
+            value={sortBy}
+            onChange={(e) => {
+              setSortBy(e.target.value);
+              setPage(1);
+            }}
+          >
+            <option value="lastActive">Sort: Last active</option>
+            <option value="created">Sort: Created / First seen</option>
+            <option value="titlesWatched">Sort: Titles watched</option>
+          </select>
+        </section>
+
+        {/* People Table */}
+        <section className={styles.panel}>
+          <div className={styles.tableScroll}>
+            <table className={styles.table}>
               <thead>
-                <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.02)", color: "rgba(255,255,255,0.6)" }}>
-                  <th style={{ padding: "14px 18px", fontWeight: 600 }}>User</th>
-                  <th style={{ padding: "14px 18px", fontWeight: 600 }}>Email</th>
-                  <th style={{ padding: "14px 18px", fontWeight: 600 }}>Role</th>
-                  <th style={{ padding: "14px 18px", fontWeight: 600 }}>Joined</th>
-                  <th style={{ padding: "14px 18px", fontWeight: 600 }}>Status</th>
-                  <th style={{ padding: "14px 18px", fontWeight: 600, textAlign: "right" }}>Actions</th>
+                <tr>
+                  <th>Person</th>
+                  <th>Type</th>
+                  <th>Email</th>
+                  <th>Method</th>
+                  <th>Country</th>
+                  <th>First seen / Joined</th>
+                  <th>Last active</th>
+                  <th>Watched</th>
+                  <th>Status</th>
+                  <th className={styles.alignRight}>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredUsers.length > 0 ? (
-                  filteredUsers.map((u) => {
-                    const isBanned = Boolean(u.bannedAt);
-                    const isAdmin = u.role === "ADMIN";
-                    const isSelf = u.id === session.user.id;
-                    const dateStr = u.createdAt ? new Date(u.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—";
+                {data.items.length > 0 ? (
+                  data.items.map((p) => {
+                    const isBanned = p.status === "banned";
+                    const detailHref = p.entityType === "guest" ? `/admin/guests/${p.id}` : `/admin/users/${p.id}`;
 
                     return (
                       <tr
-                        key={u.id}
-                        style={{
-                          borderBottom: "1px solid rgba(255,255,255,0.05)",
-                          opacity: isBanned ? 0.6 : 1,
-                        }}
+                        key={`${p.entityType}:${p.id}`}
+                        className={`${styles.tableRow} ${isBanned ? styles.tableRowBanned : ""}`}
                       >
-                        <td style={{ padding: "14px 18px" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                            <div
-                              style={{
-                                width: 32,
-                                height: 32,
-                                borderRadius: "50%",
-                                background: "var(--surface-3, #1F1712)",
-                                overflow: "hidden",
-                                display: "grid",
-                                placeItems: "center",
-                                fontWeight: 700,
-                                fontSize: 13,
-                              }}
-                            >
-                              {u.image ? (
+                        <td>
+                          <Link href={detailHref} className={styles.personLink}>
+                            <div className={styles.avatarCircle}>
+                              {p.image ? (
                                 // eslint-disable-next-line @next/next/no-img-element
-                                <img src={u.image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                                <img src={p.image} alt="" className={styles.avatarImg} />
+                              ) : p.entityType === "guest" ? (
+                                <Ghost size={15} />
                               ) : (
-                                (u.name || u.username || "U").charAt(0).toUpperCase()
+                                p.displayName.charAt(0).toUpperCase()
                               )}
                             </div>
                             <div>
-                              <div style={{ fontWeight: 600, color: "#fff" }}>{u.name || "Unnamed"}</div>
-                              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)" }}>@{u.username || "user"}</div>
+                              <div className={styles.personName}>{p.displayName}</div>
+                              <div className={styles.personMeta}>
+                                {p.username ? `@${p.username}` : p.entityType === "guest" ? "Browser guest" : p.id.slice(0, 8)}
+                              </div>
                             </div>
-                          </div>
+                          </Link>
                         </td>
 
-                        <td style={{ padding: "14px 18px", color: "rgba(255,255,255,0.7)" }}>
-                          {u.email || "—"}
-                        </td>
-
-                        <td style={{ padding: "14px 18px" }}>
+                        <td>
                           <span
-                            style={{
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: 4,
-                              padding: "4px 8px",
-                              borderRadius: 6,
-                              fontSize: 11,
-                              fontWeight: 700,
-                              background: isAdmin ? "var(--accent-soft, rgba(255, 138, 43, 0.16))" : "rgba(255, 235, 210, 0.06)",
-                              color: isAdmin ? "var(--accent, #FF8A2B)" : "var(--text-dim, rgba(255, 240, 224, 0.8))",
-                            }}
+                            className={`${styles.badge} ${
+                              p.personType === "admin"
+                                ? styles.badgeAdmin
+                                : p.personType === "guest"
+                                ? styles.badgeGuest
+                                : styles.badgeUser
+                            }`}
                           >
-                            {isAdmin && <ShieldCheck size={12} />}
-                            {u.role}
+                            {p.personType === "admin" && <ShieldCheck size={11} />}
+                            {p.personType === "admin" ? "Admin" : p.personType === "guest" ? "Guest" : "User"}
                           </span>
                         </td>
 
-                        <td style={{ padding: "14px 18px", color: "rgba(255,255,255,0.5)" }}>
-                          {dateStr}
-                        </td>
+                        <td>{p.email || "—"}</td>
+                        <td>{p.signInMethod}</td>
+                        <td>{p.country || "—"}</td>
+                        <td>{formatDate(p.createdAt)}</td>
+                        <td>{formatDate(p.lastActiveAt)}</td>
+                        <td>{p.titlesWatched}</td>
 
-                        <td style={{ padding: "14px 18px" }}>
-                          <span
-                            style={{
-                              padding: "4px 8px",
-                              borderRadius: 6,
-                              fontSize: 11,
-                              fontWeight: 700,
-                              background: isBanned ? "var(--danger-soft, rgba(255, 90, 77, 0.14))" : "var(--success-soft, rgba(91, 185, 140, 0.14))",
-                              color: isBanned ? "var(--danger-lift, #FF7B70)" : "var(--success, #5BB98C)",
-                            }}
-                          >
+                        <td>
+                          <span className={`${styles.badge} ${isBanned ? styles.badgeBanned : styles.badgeActive}`}>
                             {isBanned ? "Banned" : "Active"}
                           </span>
                         </td>
 
-                        <td style={{ padding: "14px 18px", textAlign: "right" }}>
-                          <div style={{ display: "inline-flex", gap: 8 }}>
-                            {!isSelf && (
+                        <td className={styles.alignRight}>
+                          <div className={styles.actionsGroup}>
+                            <Link href={detailHref} className={styles.smallGlassBtn} title="View watch history">
+                              <Eye size={13} />
+                              <span>History</span>
+                            </Link>
+
+                            {!p.isAdmin && p.entityType === "user" && (
                               <button
                                 type="button"
-                                onClick={() => handleToggleRole(u)}
-                                style={{
-                                  padding: "6px 10px",
-                                  borderRadius: 6,
-                                  background: "var(--surface-2, #17110E)",
-                                  border: "1px solid var(--hairline, rgba(255, 214, 170, 0.10))",
-                                  color: "#fff",
-                                  fontSize: 12,
-                                  cursor: "pointer",
-                                }}
+                                className={isBanned ? styles.successBtn : styles.dangerBtn}
+                                onClick={() => handleToggleBan(p)}
                               >
-                                {isAdmin ? "Demote" : "Make Admin"}
+                                {isBanned ? <CheckCircle2 size={13} /> : <Ban size={13} />}
+                                <span>{isBanned ? "Unban" : "Ban"}</span>
                               </button>
                             )}
 
-                            {!isSelf && (
+                            {!p.isAdmin && (
                               <button
                                 type="button"
-                                onClick={() => handleToggleBan(u)}
-                                style={{
-                                  padding: "6px 10px",
-                                  borderRadius: 6,
-                                  background: isBanned ? "var(--success-soft, rgba(91, 185, 140, 0.14))" : "var(--danger-soft, rgba(255, 90, 77, 0.14))",
-                                  border: "1px solid " + (isBanned ? "rgba(91, 185, 140, 0.3)" : "rgba(255, 90, 77, 0.3)"),
-                                  color: isBanned ? "var(--success, #5BB98C)" : "var(--danger-lift, #FF7B70)",
-                                  fontSize: 12,
-                                  cursor: "pointer",
-                                }}
+                                className={styles.dangerBtn}
+                                aria-label={`Delete ${p.displayName}`}
+                                onClick={() => setDeleteTarget(p)}
                               >
-                                {isBanned ? "Unban" : "Ban"}
+                                <Trash2 size={13} />
                               </button>
-                            )}
-
-                            {isSelf && (
-                              <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", fontStyle: "italic" }}>
-                                (Your account)
-                              </span>
                             )}
                           </div>
                         </td>
@@ -383,18 +426,89 @@ export default function AdminUsersPage({ authorized = false, signedInEmail = nul
                   })
                 ) : (
                   <tr>
-                    <td colSpan={6} style={{ padding: "40px 18px", textAlign: "center", color: "rgba(255,255,255,0.4)" }}>
-                      No users match your search query.
+                    <td colSpan={10} className={styles.emptyCell}>
+                      No users or guests match your current filters.
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
           </div>
-        </div>
-      </div>
 
-      {toast && <div style={{ position: "fixed", bottom: 24, right: 24, background: "var(--surface-3, #1F1712)", color: "var(--text, #FFF6EC)", padding: "10px 18px", borderRadius: 8, border: "1px solid var(--hairline-strong, rgba(255, 214, 170, 0.18))", fontSize: 13, zIndex: 9999 }}>{toast}</div>}
+          <div className={styles.paginationBar}>
+            <span>
+              Showing {data.items.length} of {data.total} people (Page {data.page} of {data.totalPages})
+            </span>
+
+            <div className={styles.paginationControls}>
+              <select
+                aria-label="Rows per page"
+                className={styles.selectInput}
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setPage(1);
+                }}
+              >
+                <option value={25}>25 / page</option>
+                <option value={50}>50 / page</option>
+                <option value={100}>100 / page</option>
+              </select>
+
+              <button
+                type="button"
+                className={styles.glassBtn}
+                disabled={data.page <= 1}
+                onClick={() => setPage((pNo) => Math.max(1, pNo - 1))}
+              >
+                Prev
+              </button>
+              <button
+                type="button"
+                className={styles.glassBtn}
+                disabled={data.page >= data.totalPages}
+                onClick={() => setPage((pNo) => Math.min(data.totalPages, pNo + 1))}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {deleteTarget && (
+          <div className={styles.modalBackdrop} onClick={() => setDeleteTarget(null)}>
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="confirm-delete-person"
+              className={styles.modalCard}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className={styles.modalHeader}>
+                <h3 id="confirm-delete-person" className={styles.modalTitle}>
+                  Delete {deleteTarget.displayName}?
+                </h3>
+                <button type="button" className={styles.modalClose} aria-label="Close" onClick={() => setDeleteTarget(null)}>
+                  ✕
+                </button>
+              </div>
+              <p className={styles.modalBody}>
+                This permanently deletes this {deleteTarget.entityType} and all associated watch history. This cannot be undone.
+              </p>
+              <div className={styles.modalActions}>
+                <button type="button" className={styles.glassBtn} onClick={() => setDeleteTarget(null)}>
+                  Cancel
+                </button>
+                <button type="button" className={styles.dangerBtn} onClick={handleConfirmDelete}>
+                  Confirm Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {toast && <div className={styles.toast}>{toast}</div>}
+      </div>
     </Layout>
   );
 }

@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { prisma } from "../../../lib/prisma";
 import { applyApiGuard } from "../../../lib/api-guard";
 import { hashResetToken } from "../../../lib/tokenHash";
+import { sendPasswordResetEmail } from "../../../lib/email";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -22,16 +23,14 @@ export default async function handler(req, res) {
       select: { id: true, email: true },
     });
 
-    // To prevent email enumeration, always return success even if user not found
     if (!user) {
       return res.status(200).json({ ok: true, message: "If an account with that email exists, password reset instructions have been sent." });
     }
 
     const token = crypto.randomBytes(32).toString("hex");
     const tokenHash = hashResetToken(token);
-    const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+    const expires = new Date(Date.now() + 60 * 60 * 1000);
 
-    // Delete any existing reset token for this email
     await prisma.verificationToken.deleteMany({
       where: { identifier: `reset:${email}` },
     });
@@ -44,31 +43,9 @@ export default async function handler(req, res) {
       },
     });
 
-    const siteUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
+    const siteUrl = (process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(/\/+$/, "");
     const resetUrl = `${siteUrl}/auth/reset?token=${token}&email=${encodeURIComponent(email)}`;
-
-    // Optional email sending via Resend; never log reset URLs or tokens
-    if (process.env.RESEND_API_KEY) {
-      try {
-        await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            from: process.env.EMAIL_FROM || "DIVINE <security@divine.su>",
-            to: email,
-            subject: "Reset your DIVINE password",
-            html: `<p>Hello,</p><p>You requested a password reset for DIVINE. Click the link below to set a new password:</p><p><a href="${resetUrl}">${resetUrl}</a></p><p>This link will expire in 1 hour.</p>`,
-          }),
-        });
-      } catch (err) {
-        console.error("Failed to send reset email via Resend:", err?.message || "Unknown error");
-      }
-    } else if (process.env.NODE_ENV !== "production") {
-      console.warn("[DIVINE Auth] RESEND_API_KEY not configured; password reset email not dispatched.");
-    }
+    await sendPasswordResetEmail({ to: email, resetUrl });
 
     return res.status(200).json({ ok: true, message: "If an account with that email exists, password reset instructions have been sent." });
   } catch (e) {

@@ -97,6 +97,7 @@ export default function App({ Component, pageProps }) {
         wheelMultiplier: 1.15, // Glides a little bit further per wheel tick
         touchMultiplier: 1.5,
         infinite: false,
+        allowNestedScroll: true,
       });
 
       window.__lenis = lenis;

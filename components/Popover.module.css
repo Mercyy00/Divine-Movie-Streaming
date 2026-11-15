@@ -16,12 +16,13 @@
   min-width: 248px;
   padding: 8px;
   border-radius: var(--radius-panel, 20px);
-  background: linear-gradient(180deg, rgba(255, 235, 210, 0.08) 0%, rgba(255, 235, 210, 0.02) 100%), rgba(20, 14, 10, 0.94);
-  backdrop-filter: var(--g-blur, blur(28px) saturate(170%) brightness(1.08));
-  -webkit-backdrop-filter: var(--g-blur, blur(28px) saturate(170%) brightness(1.08));
-  border: 1px solid var(--hairline-strong, rgba(255, 214, 170, 0.16));
+  background: var(--g-panel-fill, linear-gradient(180deg, rgba(255, 255, 255, 0.10) 0%, rgba(255, 255, 255, 0.02) 100%), rgba(16, 18, 24, 0.80));
+  backdrop-filter: var(--g-bar-blur, blur(32px) saturate(190%) brightness(1.10));
+  -webkit-backdrop-filter: var(--g-bar-blur, blur(32px) saturate(190%) brightness(1.10));
+  border: 1px solid rgba(255, 255, 255, 0.16);
   box-shadow:
-    inset 0 1px 0 rgba(255, 230, 200, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.06),
     0 24px 56px -12px rgba(0, 0, 0, 0.72);
   transform-origin: top right;
   animation: popIn 0.2s var(--ease-out) backwards;
@@ -32,7 +33,7 @@
   .panel {
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
-    background: rgba(20, 14, 10, 0.98);
+    background: rgba(16, 18, 24, 0.98);
   }
 }
 

@@ -74,6 +74,8 @@ model User {
   customLists   CustomList[]
   notifications Notification[]
   settings      UserSettings?
+  guests        Guest[]
+  auditLogs     AdminAuditLog[]
 }
 
 model Profile {
@@ -191,3 +193,54 @@ model FeaturedTitle {
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
 }
+
+// ── Guests & Admin Audit Log ─────────────────────────────────────
+model Guest {
+  id          String   @id
+  firstSeenAt DateTime @default(now())
+  lastSeenAt  DateTime @default(now())
+  country     String?
+  userAgent   String?
+  ipHash      String?
+  userId      String?
+  createdAt   DateTime @default(now())
+
+  user         User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
+  watchHistory GuestWatchHistory[]
+
+  @@index([lastSeenAt])
+  @@index([userId])
+}
+
+model GuestWatchHistory {
+  id        String   @id @default(cuid())
+  guestId   String
+  titleId   String
+  titleData Json
+  progress  Float    @default(0)
+  season    Int      @default(0)
+  episode   Int      @default(0)
+  timeLeft  String?
+  watchedAt DateTime @default(now())
+
+  guest Guest @relation(fields: [guestId], references: [id], onDelete: Cascade)
+
+  @@unique([guestId, titleId, season, episode])
+  @@index([guestId, watchedAt(sort: Desc)])
+}
+
+model AdminAuditLog {
+  id         String   @id @default(cuid())
+  adminId    String
+  action     String
+  targetType String
+  targetId   String
+  ip         String?
+  createdAt  DateTime @default(now())
+
+  admin User @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([adminId, createdAt(sort: Desc)])
+  @@index([targetType, targetId])
+}
+

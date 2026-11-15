@@ -1,46 +1,44 @@
 import { useSession } from "next-auth/react";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "../../lib/auth";
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { getAdminPageProps } from "../../lib/session";
 import Layout from "../../components/Layout";
 import LoadingScreen from "../../components/LoadingScreen";
 import AdminNav from "../../components/AdminNav";
+import AdminAccessGate from "../../components/AdminAccessGate";
 import { useToast } from "../../lib/useToast";
 import {
   Sparkles,
-  ShieldAlert,
   Plus,
   Trash2,
-  Check,
   Eye,
   EyeOff,
   Search,
   ExternalLink,
 } from "lucide-react";
+import styles from "../../styles/Admin.module.css";
 
 export async function getServerSideProps(context) {
-  const session = await getServerSession(context.req, context.res, authOptions);
-  if (!session || session.user?.role !== "ADMIN") {
-    context.res.statusCode = 403;
-    return {
-      props: {
-        authorized: false,
-        signedInEmail: session?.user?.email || null,
-        currentRole: session?.user?.role || null,
-      },
-    };
+  const access = await getAdminPageProps(context);
+  const role = access.currentRole;
+  if (!access.authorized || role !== "ADMIN") {
+    return { props: { ...access, authorized: false } };
   }
-  return { props: { authorized: true } };
+  return { props: access };
 }
 
-export default function AdminFeaturedPage({ authorized = false, signedInEmail = null, currentRole = null }) {
+export default function AdminFeaturedPage({
+  authorized = false,
+  dbConfigured = true,
+  signedInEmail = null,
+  currentRole = null,
+  emailVerified = false,
+}) {
   const { data: session, status } = useSession();
   const [featured, setFeatured] = useState([]);
   const [loading, setLoading] = useState(Boolean(authorized));
   const [toast, showToast] = useToast(2500);
 
-  // Search to add new featured title
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
@@ -65,7 +63,6 @@ export default function AdminFeaturedPage({ authorized = false, signedInEmail = 
     }
   }, [authorized, status, session]);
 
-  // Live search for adding title
   useEffect(() => {
     if (!showAddModal) return;
     const onKeyDown = (e) => {
@@ -170,242 +167,79 @@ export default function AdminFeaturedPage({ authorized = false, signedInEmail = 
     );
   }
 
-  const isAdmin = authorized && status === "authenticated" && session?.user?.role === "ADMIN";
-  const activeEmail = session?.user?.email || signedInEmail;
-  const activeRole = session?.user?.role || currentRole;
+  const isAdmin = authorized && currentRole === "ADMIN" && status === "authenticated" && session?.user?.role === "ADMIN";
 
   if (!isAdmin) {
     return (
-      <Layout title="Admin · Access Required">
-        <div
-          style={{
-            maxWidth: 500,
-            margin: "96px auto",
-            textAlign: "center",
-            padding: "32px 28px",
-            borderRadius: 20,
-            background: "var(--g-fill, rgba(255,255,255,0.06))",
-            border: "1px solid var(--g-edge, rgba(255,255,255,0.14))",
-            backdropFilter: "var(--g-blur, blur(24px))",
-          }}
-        >
-          <ShieldAlert size={44} color="var(--amber, #FFC84A)" style={{ margin: "0 auto 14px" }} />
-          <h1 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 10px" }}>Administrator Access Required</h1>
-          {activeEmail ? (
-            <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 14, lineHeight: 1.55, margin: "0 0 22px" }}>
-              Signed in as <strong>{activeEmail}</strong> (Role: <code>{activeRole || "USER"}</code>).
-              {" "}To grant administrator access, add this email to <code>ADMIN_EMAILS</code> in your environment or ask an existing admin to promote your account.
-            </p>
-          ) : (
-            <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 14, lineHeight: 1.55, margin: "0 0 22px" }}>
-              Sign in with an administrator account to manage featured titles. Set <code>ADMIN_EMAILS</code> in your server environment to designate admin accounts.
-            </p>
-          )}
-          <div style={{ display: "flex", justifyContent: "center", gap: 10, flexWrap: "wrap" }}>
-            {!activeEmail && (
-              <Link
-                href="/auth/signin?callbackUrl=/admin/featured"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  height: 38,
-                  padding: "0 20px",
-                  borderRadius: 999,
-                  background: "#ffffff",
-                  color: "var(--on-accent, #0A0807)",
-                  fontWeight: 700,
-                  fontSize: 14,
-                  textDecoration: "none",
-                }}
-              >
-                Sign in
-              </Link>
-            )}
-            <Link
-              href="/"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                height: 38,
-                padding: "0 18px",
-                borderRadius: 999,
-                background: "var(--g-fill, rgba(255,255,255,0.08))",
-                border: "1px solid var(--g-edge, rgba(255,255,255,0.16))",
-                color: "#ffffff",
-                fontWeight: 600,
-                fontSize: 14,
-                textDecoration: "none",
-              }}
-            >
-              Return Home
-            </Link>
-          </div>
-        </div>
-      </Layout>
+      <AdminAccessGate
+        dbConfigured={dbConfigured}
+        signedInEmail={session?.user?.email || signedInEmail}
+        currentRole={session?.user?.role || currentRole}
+        emailVerified={Boolean(session?.user?.emailVerified || emailVerified)}
+        callbackUrl="/admin/featured"
+      />
     );
   }
 
   return (
     <Layout title="Admin · Featured Titles">
-      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "40px var(--page-pad) 80px" }}>
+      <div className={styles.page}>
         <AdminNav activeTab="featured" />
 
-        {/* Action Header */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            flexWrap: "wrap",
-            gap: 16,
-            marginBottom: 24,
-          }}
-        >
+        <div className={styles.headerRow}>
           <div>
-            <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>
-              Hero Banner Titles ({featured.length})
-            </h2>
-            <p style={{ margin: "4px 0 0", fontSize: 13, color: "rgba(255,255,255,0.55)" }}>
+            <h2 className={styles.pageTitle}>Hero Banner Titles ({featured.length})</h2>
+            <p className={styles.pageSub}>
               Customize and order the titles displayed in the homepage hero carousel
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setShowAddModal(true)}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              padding: "9px 16px",
-              borderRadius: 8,
-              background: "#ffffff",
-              color: "var(--on-accent, #0A0807)",
-              fontWeight: 700,
-              fontSize: 13,
-              border: "none",
-              cursor: "pointer",
-              transition: "transform 0.15s ease",
-            }}
-          >
+          <button type="button" onClick={() => setShowAddModal(true)} className={styles.primaryBtn}>
             <Plus size={16} strokeWidth={2.5} />
             <span>Add Featured Title</span>
           </button>
         </div>
 
-        {/* Featured Items List */}
         {featured.length === 0 ? (
-          <div
-            style={{
-              padding: "48px 20px",
-              textAlign: "center",
-              background: "rgba(255,255,255,0.02)",
-              border: "1px dashed rgba(255,255,255,0.12)",
-              borderRadius: 14,
-            }}
-          >
-            <Sparkles size={36} style={{ color: "rgba(255,255,255,0.3)", margin: "0 auto 12px" }} />
-            <p style={{ margin: "0 0 14px", color: "rgba(255,255,255,0.7)", fontSize: 15, fontWeight: 600 }}>
-              No custom featured titles set
-            </p>
-            <p style={{ margin: 0, color: "rgba(255,255,255,0.4)", fontSize: 13, maxWidth: 420, marginInline: "auto" }}>
-              The homepage is currently displaying automated trending titles. Click "Add Featured Title" to pin custom selections.
-            </p>
+          <div className={styles.panelPadded}>
+            <div className={styles.emptyCell}>
+              <Sparkles size={32} />
+              <p>No custom featured titles set. Homepage displays automated trending titles.</p>
+            </div>
           </div>
         ) : (
-          <div style={{ display: "grid", gap: 12 }}>
+          <div className={styles.mediaList}>
             {featured.map((item, index) => {
               const data = item.titleData || {};
               const titleName = data.title || data.name || item.titleId;
               return (
-                <div
-                  key={item.id}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: 16,
-                    padding: "12px 18px",
-                    background: "var(--surface-1, #100C0A)",
-                    border: "1px solid var(--hairline, rgba(255, 214, 170, 0.10))",
-                    borderRadius: 12,
-                    transition: "border-color 0.2s ease",
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", gap: 14, minWidth: 0 }}>
-                    <span
-                      style={{
-                        fontSize: 12,
-                        fontFamily: "var(--font-mono)",
-                        color: "rgba(255,255,255,0.4)",
-                        width: 20,
-                        textAlign: "center",
-                      }}
-                    >
-                      #{index + 1}
-                    </span>
-
+                <div key={item.id} className={styles.mediaRow}>
+                  <div className={styles.mediaLeft}>
+                    <span className={styles.rankTag}>#{index + 1}</span>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={data.poster || data.backdrop || "/brand/divine-logo-autumn-on-dark.svg"}
                       alt=""
-                      style={{
-                        width: 44,
-                        height: 62,
-                        borderRadius: 6,
-                        objectFit: "cover",
-                        background: "var(--surface-2, #17110E)",
-                        flexShrink: 0,
-                      }}
-                      onError={(e) => {
-                        e.currentTarget.style.display = "none";
-                      }}
+                      className={styles.posterThumb}
                     />
-
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <b style={{ fontSize: 15, color: "#fff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                          {titleName}
-                        </b>
-                        <span
-                          style={{
-                            fontSize: 11,
-                            fontWeight: 700,
-                            padding: "1px 6px",
-                            borderRadius: 4,
-                            background: "rgba(255,255,255,0.08)",
-                            color: "rgba(255,255,255,0.65)",
-                            textTransform: "uppercase",
-                          }}
-                        >
-                          {data.type || "title"}
-                        </span>
+                    <div className={styles.mediaInfo}>
+                      <div className={styles.actionsGroup}>
+                        <span className={styles.mediaTitle}>{titleName}</span>
+                        <span className={`${styles.badge} ${styles.badgeUser}`}>{data.type || "title"}</span>
                       </div>
-                      <p style={{ margin: "3px 0 0", fontSize: 12, color: "rgba(255,255,255,0.5)" }}>
-                        {data.year && <span>{data.year} · </span>}
-                        {data.rating && <span>★ {data.rating} · </span>}
-                        <span>ID: {item.titleId}</span>
-                      </p>
+                      <span className={styles.mediaMeta}>
+                        {data.year ? `${data.year} · ` : ""}
+                        {data.rating ? `★ ${data.rating} · ` : ""}
+                        ID: {item.titleId}
+                      </span>
                     </div>
                   </div>
 
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div className={styles.actionsGroup}>
                     <button
                       type="button"
                       onClick={() => handleToggleActive(item)}
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 6,
-                        padding: "6px 12px",
-                        borderRadius: 6,
-                        fontSize: 12,
-                        fontWeight: 600,
-                        border: "1px solid var(--hairline, rgba(255, 214, 170, 0.12))",
-                        background: item.active ? "var(--success-soft, rgba(91, 185, 140, 0.14))" : "rgba(255, 235, 210, 0.04)",
-                        color: item.active ? "var(--success, #5BB98C)" : "var(--text-faint, rgba(255, 240, 224, 0.50))",
-                        cursor: "pointer",
-                      }}
+                      className={item.active ? styles.successBtn : styles.smallGlassBtn}
                       title={item.active ? "Currently displayed on banner" : "Hidden from banner"}
                     >
                       {item.active ? <Eye size={13} /> : <EyeOff size={13} />}
@@ -415,12 +249,7 @@ export default function AdminFeaturedPage({ authorized = false, signedInEmail = 
                     <Link
                       href={`/title/${item.titleId}`}
                       target="_blank"
-                      style={{
-                        padding: "6px 8px",
-                        color: "rgba(255,255,255,0.5)",
-                        display: "grid",
-                        placeItems: "center",
-                      }}
+                      className={styles.smallGlassBtn}
                       title="View title page"
                     >
                       <ExternalLink size={14} />
@@ -429,18 +258,10 @@ export default function AdminFeaturedPage({ authorized = false, signedInEmail = 
                     <button
                       type="button"
                       onClick={() => handleDelete(item)}
-                      style={{
-                        padding: "6px 8px",
-                        color: "var(--danger, #FF5A4D)",
-                        background: "none",
-                        border: "none",
-                        cursor: "pointer",
-                        display: "grid",
-                        placeItems: "center",
-                      }}
+                      className={styles.dangerBtn}
                       title="Delete from featured"
                     >
-                      <Trash2 size={15} />
+                      <Trash2 size={14} />
                     </button>
                   </div>
                 </div>
@@ -449,123 +270,61 @@ export default function AdminFeaturedPage({ authorized = false, signedInEmail = 
           </div>
         )}
 
-        {/* Modal: Search & Add Featured Title */}
         {showAddModal && (
-          <div
-            style={{
-              position: "fixed",
-              inset: 0,
-              background: "rgba(0,0,0,0.75)",
-              backdropFilter: "blur(8px)",
-              display: "grid",
-              placeItems: "center",
-              zIndex: 99999,
-              padding: 20,
-            }}
-            onClick={() => setShowAddModal(false)}
-          >
+          <div className={styles.modalBackdrop} onClick={() => setShowAddModal(false)}>
             <div
               role="dialog"
               aria-modal="true"
               aria-labelledby="add-featured-title"
-              style={{
-                width: "100%",
-                maxWidth: 520,
-                background: "var(--surface-2, #17110E)",
-                border: "1px solid var(--hairline-strong, rgba(255, 214, 170, 0.18))",
-                borderRadius: 16,
-                padding: 24,
-                boxShadow: "0 24px 60px rgba(0,0,0,0.8)",
-              }}
+              className={styles.modalCard}
               onClick={(e) => e.stopPropagation()}
             >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                <h3 id="add-featured-title" style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Add Featured Title</h3>
+              <div className={styles.modalHeader}>
+                <h3 id="add-featured-title" className={styles.modalTitle}>Add Featured Title</h3>
                 <button
                   type="button"
                   aria-label="Close modal"
                   onClick={() => setShowAddModal(false)}
-                  style={{ background: "none", border: "none", color: "rgba(255,255,255,0.5)", cursor: "pointer", fontSize: 18 }}
+                  className={styles.modalClose}
                 >
                   ✕
                 </button>
               </div>
 
-              <div style={{ position: "relative", marginBottom: 16 }}>
-                <Search size={16} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.4)" }} />
+              <div className={styles.searchWrap}>
+                <Search size={15} className={styles.searchIcon} />
                 <input
                   type="text"
                   placeholder="Search TMDB for a movie, series, or anime…"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   autoFocus
-                  style={{
-                    width: "100%",
-                    padding: "10px 14px 10px 38px",
-                    background: "rgba(255,255,255,0.06)",
-                    border: "1px solid rgba(255,255,255,0.14)",
-                    borderRadius: 10,
-                    color: "#fff",
-                    fontSize: 14,
-                    outline: "none",
-                  }}
+                  className={styles.searchInput}
                 />
               </div>
 
-              {searching && (
-                <p style={{ textAlign: "center", color: "rgba(255,255,255,0.5)", fontSize: 13, margin: "20px 0" }}>
-                  Searching TMDB…
-                </p>
-              )}
+              {searching && <p className={styles.modalBody}>Searching TMDB…</p>}
 
-              <div style={{ maxHeight: 320, overflowY: "auto", display: "grid", gap: 8 }}>
+              <div className={styles.modalResults}>
                 {searchResults.map((t) => (
-                  <div
-                    key={t.id}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      gap: 12,
-                      padding: "8px 12px",
-                      borderRadius: 8,
-                      background: "rgba(255,255,255,0.03)",
-                      border: "1px solid rgba(255,255,255,0.06)",
-                    }}
-                  >
-                    <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                  <div key={t.id} className={styles.mediaRow}>
+                    <div className={styles.mediaLeft}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={t.poster || t.backdrop || "/brand/divine-logo-autumn-on-dark.svg"}
                         alt=""
-                        style={{ width: 32, height: 46, borderRadius: 4, objectFit: "cover" }}
+                        className={styles.posterThumb}
                       />
-                      <div style={{ minWidth: 0 }}>
-                        <b style={{ fontSize: 13, color: "#fff", display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                          {t.title || t.name}
-                        </b>
-                        <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>
+                      <div className={styles.mediaInfo}>
+                        <span className={styles.mediaTitle}>{t.title || t.name}</span>
+                        <span className={styles.mediaMeta}>
                           {t.year || t.releaseDate?.slice(0, 4)} · {t.type}
                         </span>
                       </div>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => handleAddTitle(t)}
-                      style={{
-                        padding: "6px 12px",
-                        borderRadius: 6,
-                        background: "#ffffff",
-                        color: "var(--on-accent, #0A0807)",
-                        fontSize: 12,
-                        fontWeight: 700,
-                        border: "none",
-                        cursor: "pointer",
-                        flexShrink: 0,
-                      }}
-                    >
-                      Pin Title
+                    <button type="button" onClick={() => handleAddTitle(t)} className={styles.primaryBtn}>
+                      Pin
                     </button>
                   </div>
                 ))}
@@ -574,25 +333,7 @@ export default function AdminFeaturedPage({ authorized = false, signedInEmail = 
           </div>
         )}
 
-        {toast && (
-          <div
-            style={{
-              position: "fixed",
-              bottom: 24,
-              right: 24,
-              background: "var(--surface-3, #1F1712)",
-              color: "var(--text, #FFF6EC)",
-              padding: "10px 18px",
-              borderRadius: 8,
-              border: "1px solid var(--hairline-strong, rgba(255, 214, 170, 0.18))",
-              fontSize: 13,
-              zIndex: 99999,
-              boxShadow: "0 10px 30px rgba(0,0,0,0.5)",
-            }}
-          >
-            {toast}
-          </div>
-        )}
+        {toast && <div className={styles.toast}>{toast}</div>}
       </div>
     </Layout>
   );

@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useSession, signOut } from "next-auth/react";
-import { DEFAULT_AVATAR } from "../lib/avatars";
+import { DEFAULT_AVATAR, normalizeAvatarUrl } from "../lib/avatars";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import {
@@ -145,8 +145,13 @@ export default function Header({ watchTitle = null }) {
         setLiveRecs([]);
         return;
       }
-      const mostRecent = history[0];
-      if (!mostRecent || !mostRecent.id) return;
+      const rawRecent = history[0];
+      const mostRecent =
+        rawRecent?.title && typeof rawRecent.title === "object"
+          ? { ...rawRecent.title, ...rawRecent }
+          : rawRecent;
+      const lookupId = mostRecent?.id || mostRecent?.tmdbId;
+      if (!mostRecent || !lookupId) return;
       try {
         const type =
           mostRecent.type === "tv" || mostRecent.type === "series"
@@ -155,7 +160,7 @@ export default function Header({ watchTitle = null }) {
             ? "anime"
             : "movie";
         const res = await fetch(
-          `/api/tmdb/recommendations?id=${encodeURIComponent(mostRecent.id)}&type=${type}&limit=4`
+          `/api/tmdb/recommendations?id=${encodeURIComponent(lookupId)}&type=${type}&limit=4`
         );
         if (res.ok) {
           const data = await res.json();
@@ -176,11 +181,8 @@ export default function Header({ watchTitle = null }) {
   // Notification Filter Tab: "all" | "foryou" | "unread"
   const [notifTab, setNotifTab] = useState("all");
   const [scrolled, setScrolled] = useState(false);
-  const [hidden, setHidden] = useState(false);
-  const lastScrollY = useRef(0);
 
   const isPerformance = settings?.themeMode === "performance";
-  const shouldHide = isPerformance ? false : hidden;
   const [searchModalOpen, setSearchModalOpen] = useState(false);
   const [showBrowseMenu, setShowBrowseMenu] = useState(false);
   const browseMenuRef = useRef(null);
@@ -189,8 +191,7 @@ export default function Header({ watchTitle = null }) {
     const handleGlobalKey = (e) => {
       const typing = /input|textarea|select/i.test(document.activeElement?.tagName || "") ||
         document.activeElement?.isContentEditable;
-      const shouldUseModal =
-        isPerformance || (typeof window !== "undefined" && window.innerWidth <= 768);
+      const shouldUseModal = isPerformance;
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
         if (shouldUseModal) {
           e.preventDefault();
@@ -231,19 +232,7 @@ export default function Header({ watchTitle = null }) {
     const handleScroll = () => {
       if (!ticking) {
         window.requestAnimationFrame(() => {
-          const currentY = window.scrollY;
-          setScrolled(currentY > 16);
-
-          if (currentY <= 64) {
-            setHidden(false);
-          } else if (currentY > lastScrollY.current + 10) {
-            // Scrolling down
-            setHidden(true);
-          } else if (currentY < lastScrollY.current - 10) {
-            // Scrolling up
-            setHidden(false);
-          }
-          lastScrollY.current = Math.max(0, currentY);
+          setScrolled(window.scrollY > 16);
           ticking = false;
         });
         ticking = true;
@@ -267,11 +256,12 @@ export default function Header({ watchTitle = null }) {
     profiles?.[0] ||
     null;
 
-  const name = session?.user?.name || activeProfile?.name || settings.name || "Guest";
-  const avatarImage =
+  const name = activeProfile?.name || session?.user?.name || settings.name || "Guest";
+  const avatarImage = normalizeAvatarUrl(
     activeProfile?.avatar ||
-    settings.avatar ||
-    DEFAULT_AVATAR;
+      settings.avatar ||
+      DEFAULT_AVATAR
+  );
   const email = session?.user?.email || "Not signed in";
 
   // Real Dynamic Behavior Pattern Notifications
@@ -389,6 +379,9 @@ export default function Header({ watchTitle = null }) {
     const id1 = requestAnimationFrame(updatePill);
     const id2 = setTimeout(updatePill, 100);
     const id3 = setTimeout(updatePill, 300);
+    if (typeof document !== "undefined" && document.fonts?.ready) {
+      document.fonts.ready.then(updatePill).catch(() => {});
+    }
     window.addEventListener("resize", updatePill);
     return () => {
       cancelAnimationFrame(id1);
@@ -455,7 +448,7 @@ export default function Header({ watchTitle = null }) {
       </div>
 
       {/* Notifications List */}
-      <div className={styles.notesList}>
+      <div className={styles.notesList} data-lenis-prevent>
         {totalDisplayed === 0 ? (
           <div className={styles.emptyNotifs}>
             {notifTab === "foryou" || notifTab === "mentions"
@@ -727,7 +720,7 @@ export default function Header({ watchTitle = null }) {
   if (isPerformance) {
     return (
       <header
-        className={`${styles.bar} ${styles.barPerformance} ${scrolled ? styles.barScrolled : ""} ${shouldHide ? styles.barHidden : ""}`}
+        className={`${styles.bar} ${styles.barPerformance} ${scrolled ? styles.barScrolled : ""}`}
         data-dock="true"
       >
         {/* 1. Bar Start: Brand Logo or Watch Breadcrumbs + Plain Text Nav */}
@@ -887,8 +880,8 @@ export default function Header({ watchTitle = null }) {
   }
 
   return (
-    <header className={`${styles.bar} ${scrolled ? styles.barScrolled : ""} ${shouldHide ? styles.barHidden : ""}`} data-dock="true">
-      {/* 1. Bar Start: Capsule with sliding link pill */}
+    <header className={`${styles.bar} ${scrolled ? styles.barScrolled : ""}`} data-dock="true">
+      {/* 1. Bar Start: Capsule with sliding frosted glass pill */}
       <div className={styles.barStart}>
         <nav className={styles.links} aria-label="Main" ref={navRef}>
           <span
@@ -914,7 +907,7 @@ export default function Header({ watchTitle = null }) {
               >
                 <span className={styles.linkIcon}>
                   <span style={{ display: "inline-flex", flex: "0 0 auto", transform: "none" }}>
-                    <Icon size={17} strokeWidth={1.75} />
+                    <Icon size={17} strokeWidth={2.1} />
                   </span>
                 </span>
                 {label}
@@ -924,7 +917,7 @@ export default function Header({ watchTitle = null }) {
         </nav>
       </div>
 
-      {/* 2. Center: Docked Search Palette */}
+      {/* 2. Center: Docked Blurry Search Palette */}
       <div className={styles.dock} role="search">
         <SearchPalette />
       </div>
@@ -936,7 +929,7 @@ export default function Header({ watchTitle = null }) {
         <span className={styles.tooltipWrap}>
           <Link href="/watch-party" className={styles.round} aria-label="Chat">
             <span style={{ display: "inline-flex", flex: "0 0 auto", transform: "none" }}>
-              <MessageCircle size={19} strokeWidth={1.75} />
+              <MessageCircle size={19} strokeWidth={1.85} />
             </span>
           </Link>
         </span>
@@ -951,7 +944,7 @@ export default function Header({ watchTitle = null }) {
                 aria-label={unread > 0 ? `Notifications (${unread} unread)` : "Notifications"}
               >
                 <span style={{ display: "inline-flex", flex: "0 0 auto" }}>
-                  <Bell size={19} strokeWidth={1.75} />
+                  <Bell size={19} strokeWidth={1.85} />
                 </span>
                 {unread > 0 && <span className={styles.notifDot} aria-hidden="true" />}
               </span>
@@ -968,7 +961,7 @@ export default function Header({ watchTitle = null }) {
             label="Account"
             trigger={
               <span className={styles.avatarBtn} aria-label="Account">
-                <Avatar name={name} image={avatarImage} size={40} />
+                <Avatar name={name} image={avatarImage} size={46} />
               </span>
             }
             panelClass={styles.menu}

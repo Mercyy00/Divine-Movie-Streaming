@@ -27,6 +27,7 @@ import { getAllCardTitles, getTitle } from "../../lib/data.server";
 import { fetchLiveTitle, fetchImdbId } from "../../lib/tmdb";
 import { fetchAniListDetails, extractAniListId } from "../../lib/anilist";
 import { resolveGreekGodSources, resolveMediaIdentifiers } from "../../lib/servers";
+import { DEFAULT_AVATAR } from "../../lib/avatars";
 import {
   formatResumeTime,
   extractResumeSeconds,
@@ -178,7 +179,7 @@ function WatchContent({ title: t, id, season, episode, isReady }) {
       id: `c_${Date.now()}`,
       createdAt: Date.now(),
       author: settings.name || "Guest",
-      avatar: settings.avatar || "/avatars/movie-spiderman.jpg",
+      avatar: settings.avatar || DEFAULT_AVATAR,
       time: "Just now",
       text: newCommentText.trim(),
       likes: 0,
@@ -1139,7 +1140,7 @@ function WatchContent({ title: t, id, season, episode, isReady }) {
             <div className={styles.commentAvatar}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={settings.avatar || "/avatars/movie-spiderman.jpg"}
+                src={settings.avatar || DEFAULT_AVATAR}
                 alt="User"
                 referrerPolicy="no-referrer"
               />

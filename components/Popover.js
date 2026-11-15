@@ -107,6 +107,7 @@ export default function Popover({
           role={modal ? "dialog" : "menu"}
           aria-modal={modal ? "true" : undefined}
           aria-label={label}
+          data-lenis-prevent
           onClick={(e) => {
             if (e.target.closest("button[data-close], a, [role='menuitem']")) {
               setOpen(false);

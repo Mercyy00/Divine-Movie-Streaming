@@ -3,13 +3,22 @@
    popovers, and panels: warm obsidian translucent fill, smooth blur, warm hairline edge.
    Primary CTAs and selected pills use solid white (#ffffff) with #0A0807 ink. */
 :root {
-  --g-fill: linear-gradient(180deg, rgba(255, 235, 210, 0.10) 0%, rgba(255, 235, 210, 0.02) 100%), rgba(20, 14, 10, 0.55);
-  --g-fill-hover: linear-gradient(180deg, rgba(255, 235, 210, 0.18) 0%, rgba(255, 235, 210, 0.05) 100%), rgba(30, 21, 15, 0.65);
-  --g-blur: blur(28px) saturate(170%) brightness(1.08);
-  --g-edge: inset 1px 1px 0 rgba(255, 230, 200, 0.40), inset -1px -1px 0 rgba(255, 230, 200, 0.08), 0 8px 24px -8px rgba(0, 0, 0, 0.55);
-  --g-edge-hover: inset 1px 1px 0 rgba(255, 230, 200, 0.52), inset -1px -1px 0 rgba(255, 230, 200, 0.14), 0 10px 28px -8px rgba(0, 0, 0, 0.62), 0 0 12px var(--accent-halo, rgba(255, 138, 43, 0.08));
-  --g-border: var(--hairline, rgba(255, 214, 170, 0.10));
-  --g-border-hover: var(--hairline-strong, rgba(255, 214, 170, 0.18));
+  --g-fill: linear-gradient(180deg, rgba(255, 244, 232, 0.09) 0%, rgba(255, 200, 150, 0.02) 100%), rgba(16, 13, 11, 0.42);
+  --g-fill-hover: linear-gradient(180deg, rgba(255, 246, 236, 0.15) 0%, rgba(255, 205, 155, 0.04) 100%), rgba(24, 20, 17, 0.54);
+  --g-blur: blur(28px) saturate(180%) brightness(1.06);
+  --g-edge: inset 0 1px 0 rgba(255, 244, 232, 0.22), inset 0 -1px 0 rgba(255, 215, 180, 0.06), 0 8px 28px -8px rgba(0, 0, 0, 0.52);
+  --g-edge-hover: inset 0 1px 0 rgba(255, 248, 240, 0.32), inset 0 -1px 0 rgba(255, 215, 180, 0.10), 0 12px 32px -8px rgba(0, 0, 0, 0.60);
+  --g-border: rgba(255, 236, 216, 0.15);
+  --g-border-hover: rgba(255, 240, 224, 0.26);
+
+  /* Floating header / search / icon pill subtle warm-tinted liquid glass */
+  --g-bar-fill: linear-gradient(180deg, rgba(255, 242, 228, 0.11) 0%, rgba(255, 194, 138, 0.03) 100%), rgba(18, 14, 12, 0.36);
+  --g-bar-fill-hover: linear-gradient(180deg, rgba(255, 245, 234, 0.17) 0%, rgba(255, 198, 145, 0.055) 100%), rgba(26, 20, 16, 0.48);
+  --g-bar-blur: blur(30px) saturate(185%) brightness(1.08);
+  --g-bar-edge: inset 0 1px 0 rgba(255, 244, 232, 0.26), inset 0 -1px 0 rgba(255, 210, 170, 0.07), 0 10px 30px -6px rgba(0, 0, 0, 0.46);
+  --g-bar-edge-hover: inset 0 1px 0 rgba(255, 248, 240, 0.36), inset 0 -1px 0 rgba(255, 215, 175, 0.11), 0 14px 36px -6px rgba(0, 0, 0, 0.54);
+  --g-bar-pill-active: linear-gradient(180deg, rgba(255, 244, 232, 0.22) 0%, rgba(255, 206, 160, 0.08) 100%);
+  --g-panel-fill: linear-gradient(180deg, rgba(255, 242, 228, 0.07) 0%, rgba(255, 210, 170, 0.015) 100%), rgba(14, 12, 11, 0.86);
 }
 
 [class*="_detailsBtn"],
@@ -69,23 +78,29 @@
 
 /* Active toggle state for watch action controls: elevated frosted glass */
 [class*="_actionPillBtnActive"] {
-  background: linear-gradient(180deg, rgba(255, 235, 210, 0.22) 0%, rgba(255, 235, 210, 0.10) 100%) !important;
-  border-color: var(--hairline-strong, rgba(255, 214, 170, 0.26)) !important;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.24) 0%, rgba(255, 255, 255, 0.10) 100%) !important;
+  border-color: rgba(255, 255, 255, 0.28) !important;
   color: var(--text, #FFF6EC) !important;
 }
 
 /* Fallback for browsers without backdrop-filter */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   :root {
-    --g-fill: rgba(22, 16, 12, 0.94);
-    --g-fill-hover: rgba(30, 22, 16, 0.96);
+    --g-fill: rgba(22, 24, 30, 0.94);
+    --g-fill-hover: rgba(32, 36, 44, 0.96);
+    --g-bar-fill: rgba(22, 24, 30, 0.92);
+    --g-bar-fill-hover: rgba(32, 36, 44, 0.96);
+    --g-panel-fill: rgba(16, 18, 24, 0.96);
   }
 }
 
 @media (prefers-reduced-transparency: reduce) {
   :root {
-    --g-fill: rgba(22, 16, 12, 0.96);
-    --g-fill-hover: rgba(30, 22, 16, 0.98);
+    --g-fill: rgba(22, 24, 30, 0.96);
+    --g-fill-hover: rgba(32, 36, 44, 0.98);
+    --g-bar-fill: rgba(22, 24, 30, 0.96);
+    --g-bar-fill-hover: rgba(32, 36, 44, 0.98);
+    --g-panel-fill: rgba(16, 18, 24, 0.98);
   }
   [class*="_actionPillBtn"],
   [class*="_detailsBtn"],
