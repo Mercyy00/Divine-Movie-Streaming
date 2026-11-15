@@ -197,6 +197,15 @@ export default function UserProfile({ cardMap = {} }) {
     setIsEditing(true);
   };
 
+  useEffect(() => {
+    if (!isEditing) return;
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") setIsEditing(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isEditing]);
+
   const handleSaveProfile = async (e) => {
     e.preventDefault();
     const trimmed = (editName || "").trim();
@@ -213,6 +222,7 @@ export default function UserProfile({ cardMap = {} }) {
       name: trimmed,
       avatar: editAvatar,
       bio: editBio,
+      publicProfile: editPublic,
       historyHidden: editHidden,
     }));
 
@@ -254,7 +264,7 @@ export default function UserProfile({ cardMap = {} }) {
     if (remoteUser && !isOwner) {
       return (remoteUser.watchHistory || []).map((h) => ({
         id: h.titleId,
-        at: h.watchedAt ? new Date(h.watchedAt).getTime() : Date.now(),
+        at: h.watchedAt ? new Date(h.watchedAt).getTime() : 0,
         progress: h.progress ?? 1,
       }));
     }
@@ -271,7 +281,7 @@ export default function UserProfile({ cardMap = {} }) {
           return {
             ...h,
             id: h.titleId,
-            at: h.watchedAt ? new Date(h.watchedAt).getTime() : Date.now(),
+            at: h.watchedAt ? new Date(h.watchedAt).getTime() : 0,
             title: t,
           };
         })
@@ -289,13 +299,14 @@ export default function UserProfile({ cardMap = {} }) {
 
   // 2. Liked Titles
   const likedEntries = useMemo(() => {
+    if (remoteUser && !isOwner) return [];
     const sourceReactions = reactions || {};
     const likedIds = Object.entries(sourceReactions)
       .filter(([_, r]) => r === "like" || r === "love")
       .map(([id]) => id);
 
     return likedIds.map(resolveTitle).filter(Boolean);
-  }, [reactions, cardMap]);
+  }, [remoteUser, isOwner, reactions, cardMap]);
 
   // 3. Watchlist Titles
   const watchlistEntries = useMemo(() => {
@@ -413,7 +424,7 @@ export default function UserProfile({ cardMap = {} }) {
     return `${totalWatched} ${totalWatched === 1 ? "title" : "titles"} · ${activeDays} ${
       activeDays === 1 ? "active day" : "active days"
     } · ${streak} day streak`;
-  }, [watchedEntries, history]);
+  }, [watchedEntries, effectiveHistory]);
 
   return (
     <Layout
@@ -724,9 +735,15 @@ export default function UserProfile({ cardMap = {} }) {
         {/* 6. Edit Profile Modal */}
         {isEditing && (
           <div className={styles.modalBackdrop} onClick={() => setIsEditing(false)}>
-            <div className={styles.modalBox} onClick={(e) => e.stopPropagation()}>
+            <div
+              className={styles.modalBox}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="edit-profile-modal-title"
+              onClick={(e) => e.stopPropagation()}
+            >
               <div className={styles.modalHead}>
-                <h2 className={styles.modalTitle}>Edit Profile</h2>
+                <h2 id="edit-profile-modal-title" className={styles.modalTitle}>Edit Profile</h2>
                 <button
                   type="button"
                   className={styles.closeBtn}

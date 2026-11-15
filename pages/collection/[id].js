@@ -6,7 +6,7 @@ import LoadingScreen from "../../components/LoadingScreen";
 import { runtimeLabel } from "../../lib/constants";
 import { getCollection, getAllCollections, getTitle } from "../../lib/data.server";
 import { fetchLiveCollection } from "../../lib/tmdb";
-import { useList, inList, toggleListEntry } from "../../lib/store";
+import { useList, inList, toggleListEntry, toSnapshot, entryId } from "../../lib/store";
 import { useToast } from "../../lib/useToast";
 import {
   Play,
@@ -119,34 +119,36 @@ export default function CollectionPage({ collection: initialCollection }) {
 
   // Check if all parts are saved in watchlist
   const allSaved =
-    parts.length > 0 && parts.every((p) => (watchlist || []).includes(p.id));
+    parts.length > 0 && parts.every((p) => inList(watchlist, p.id));
 
   const handleToggleAllWatchlist = () => {
     if (allSaved) {
       const partIds = new Set(parts.map((p) => p.id));
-      setWatchlist((l) => (l || []).filter((id) => !partIds.has(id)));
-      showToast(`Removed all from Watchlist`);
+      setWatchlist((l) => (l || []).filter((entry) => !partIds.has(entryId(entry))));
+      showToast("Removed all from Watchlist");
     } else {
-      const partIds = parts.map((p) => p.id).filter(Boolean);
-      setWatchlist((l) => Array.from(new Set([...partIds, ...(l || [])])));
-      showToast(`Added all ${parts.length} films to Watchlist`);
+      const toAdd = parts
+        .filter((p) => p?.id && !inList(watchlist, p.id))
+        .map((p) => ({ id: p.id, title: toSnapshot(p) || { id: p.id } }));
+      setWatchlist((l) => [...toAdd, ...(l || [])]);
+      showToast(`Added ${toAdd.length || parts.length} films to Watchlist`);
     }
   };
 
-  const handleToggleSingle = (e, id) => {
+  const handleToggleSingle = (e, film) => {
     e.preventDefault();
     e.stopPropagation();
-    const inList = (watchlist || []).includes(id);
-    setWatchlist((l) =>
-      inList ? (l || []).filter((x) => x !== id) : [id, ...(l || [])]
-    );
-    showToast(inList ? "Removed from Watchlist" : "Saved to Watchlist");
+    const saved = inList(watchlist, film.id);
+    toggleListEntry(setWatchlist, film.id, film);
+    showToast(saved ? "Removed from Watchlist" : "Saved to Watchlist");
   };
 
-  const handleShare = () => {
+  const handleShare = async () => {
     if (typeof window !== "undefined" && navigator?.clipboard) {
-      navigator.clipboard.writeText(window.location.href);
-      showToast("Collection link copied to clipboard");
+      try {
+        await navigator.clipboard.writeText(window.location.href);
+        showToast("Collection link copied to clipboard");
+      } catch {}
     }
   };
 
@@ -164,6 +166,7 @@ export default function CollectionPage({ collection: initialCollection }) {
             <img
               src={collection.backdrop}
               alt={collection.name}
+              referrerPolicy="no-referrer"
               className={styles.heroImg}
             />
           )}
@@ -202,6 +205,7 @@ export default function CollectionPage({ collection: initialCollection }) {
             <button
               type="button"
               className={styles.glassBtn}
+              aria-pressed={allSaved}
               onClick={handleToggleAllWatchlist}
             >
               {allSaved ? <Check size={17} /> : <Plus size={17} />}
@@ -240,6 +244,7 @@ export default function CollectionPage({ collection: initialCollection }) {
                     <img
                       src={film.backdrop || film.poster}
                       alt={film.title}
+                      referrerPolicy="no-referrer"
                       className={styles.filmImg}
                     />
                   ) : null}
@@ -297,7 +302,8 @@ export default function CollectionPage({ collection: initialCollection }) {
                     <button
                       type="button"
                       className={styles.itemBtn}
-                      onClick={(e) => handleToggleSingle(e, film.id)}
+                      aria-pressed={isSaved}
+                      onClick={(e) => handleToggleSingle(e, film)}
                     >
                       {isSaved ? <Check size={14} /> : <Plus size={14} />}
                       <span>{isSaved ? "Saved" : "Watchlist"}</span>

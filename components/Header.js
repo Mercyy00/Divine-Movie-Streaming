@@ -16,7 +16,6 @@ import {
   UserRound,
   Bookmark,
   Clock,
-  Download,
   CalendarClock,
   Compass,
   Users,
@@ -188,8 +187,17 @@ export default function Header({ watchTitle = null }) {
 
   useEffect(() => {
     const handleGlobalKey = (e) => {
+      const typing = /input|textarea|select/i.test(document.activeElement?.tagName || "") ||
+        document.activeElement?.isContentEditable;
+      const shouldUseModal =
+        isPerformance || (typeof window !== "undefined" && window.innerWidth <= 768);
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
-        if (isPerformance) {
+        if (shouldUseModal) {
+          e.preventDefault();
+          setSearchModalOpen(true);
+        }
+      } else if (e.key === "/" && !typing && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        if (shouldUseModal) {
           e.preventDefault();
           setSearchModalOpen(true);
         }
@@ -465,39 +473,45 @@ export default function Header({ watchTitle = null }) {
                 {displayToday.map((item) => (
                   <div
                     key={item.id}
-                    className={`${styles.notifItem} ${item.unread ? styles.notifItemUnread : ""}`}
-                    onClick={() => handleNotifClick(item)}
+                    className={`${styles.notifRow} ${item.unread ? styles.notifItemUnread : ""}`}
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={item.poster}
-                      alt={item.title}
-                      className={styles.notifPoster}
-                      loading="lazy"
-                      onError={(e) => {
-                        e.currentTarget.style.display = "none";
-                      }}
-                    />
-                    <div className={styles.notifBody}>
-                      <div className={styles.notifHeadRow}>
-                        {item.badge && (
-                          <span
-                            className={`${styles.notifBadge} ${
-                              item.type === "release"
-                                ? styles.notifBadgeRelease
-                                : item.type === "recommendation"
-                                ? styles.notifBadgeRec
-                                : styles.notifBadgeAiring
-                            }`}
-                          >
-                            {item.badge}
-                          </span>
-                        )}
-                        {item.unread && <span className={styles.notifDotBlue} aria-label="Unread" />}
-                      </div>
-                      <span className={styles.notifTitle}>{item.title}</span>
-                      <span className={styles.notifSub}>{item.subtitle}</span>
-                    </div>
+                    <button
+                      type="button"
+                      className={styles.notifItem}
+                      onClick={() => handleNotifClick(item)}
+                      data-close="true"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={item.poster}
+                        alt=""
+                        className={styles.notifPoster}
+                        loading="lazy"
+                        onError={(e) => {
+                          e.currentTarget.style.display = "none";
+                        }}
+                      />
+                      <span className={styles.notifBody}>
+                        <span className={styles.notifHeadRow}>
+                          {item.badge && (
+                            <span
+                              className={`${styles.notifBadge} ${
+                                item.type === "release"
+                                  ? styles.notifBadgeRelease
+                                  : item.type === "recommendation"
+                                  ? styles.notifBadgeRec
+                                  : styles.notifBadgeAiring
+                              }`}
+                            >
+                              {item.badge}
+                            </span>
+                          )}
+                          {item.unread && <span className={styles.notifDotBlue} aria-label="Unread" />}
+                        </span>
+                        <span className={styles.notifTitle}>{item.title}</span>
+                        <span className={styles.notifSub}>{item.subtitle}</span>
+                      </span>
+                    </button>
                     <button
                       type="button"
                       className={styles.dismissNotifBtn}
@@ -519,39 +533,45 @@ export default function Header({ watchTitle = null }) {
                 {displayThisWeek.map((item) => (
                   <div
                     key={item.id}
-                    className={`${styles.notifItem} ${item.unread ? styles.notifItemUnread : ""}`}
-                    onClick={() => handleNotifClick(item)}
+                    className={`${styles.notifRow} ${item.unread ? styles.notifItemUnread : ""}`}
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={item.poster}
-                      alt={item.title}
-                      className={styles.notifPoster}
-                      loading="lazy"
-                      onError={(e) => {
-                        e.currentTarget.style.display = "none";
-                      }}
-                    />
-                    <div className={styles.notifBody}>
-                      <div className={styles.notifHeadRow}>
-                        {item.badge && (
-                          <span
-                            className={`${styles.notifBadge} ${
-                              item.type === "release"
-                                ? styles.notifBadgeRelease
-                                : item.type === "recommendation"
-                                ? styles.notifBadgeRec
-                                : styles.notifBadgeAiring
-                            }`}
-                          >
-                            {item.badge}
-                          </span>
-                        )}
-                        {item.unread && <span className={styles.notifDotBlue} aria-label="Unread" />}
-                      </div>
-                      <span className={styles.notifTitle}>{item.title}</span>
-                      <span className={styles.notifSub}>{item.subtitle}</span>
-                    </div>
+                    <button
+                      type="button"
+                      className={styles.notifItem}
+                      onClick={() => handleNotifClick(item)}
+                      data-close="true"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={item.poster}
+                        alt=""
+                        className={styles.notifPoster}
+                        loading="lazy"
+                        onError={(e) => {
+                          e.currentTarget.style.display = "none";
+                        }}
+                      />
+                      <span className={styles.notifBody}>
+                        <span className={styles.notifHeadRow}>
+                          {item.badge && (
+                            <span
+                              className={`${styles.notifBadge} ${
+                                item.type === "release"
+                                  ? styles.notifBadgeRelease
+                                  : item.type === "recommendation"
+                                  ? styles.notifBadgeRec
+                                  : styles.notifBadgeAiring
+                              }`}
+                            >
+                              {item.badge}
+                            </span>
+                          )}
+                          {item.unread && <span className={styles.notifDotBlue} aria-label="Unread" />}
+                        </span>
+                        <span className={styles.notifTitle}>{item.title}</span>
+                        <span className={styles.notifSub}>{item.subtitle}</span>
+                      </span>
+                    </button>
                     <button
                       type="button"
                       className={styles.dismissNotifBtn}
@@ -607,7 +627,7 @@ export default function Header({ watchTitle = null }) {
         </span>
         Switch profiles
       </Link>
-      <Link href="/watchlist" role="menuitem" className={styles.menuItem}>
+      <Link href="/lists" role="menuitem" className={styles.menuItem}>
         <span style={{ display: "inline-flex", flex: "0 0 auto" }}>
           <Bookmark size={17} strokeWidth={1.8} />
         </span>
@@ -618,12 +638,6 @@ export default function Header({ watchTitle = null }) {
           <Clock size={17} strokeWidth={1.8} />
         </span>
         History
-      </Link>
-      <Link href="/downloads" role="menuitem" className={styles.menuItem}>
-        <span style={{ display: "inline-flex", flex: "0 0 auto" }}>
-          <Download size={17} strokeWidth={1.8} />
-        </span>
-        Downloads
       </Link>
       <Link href="/schedule" role="menuitem" className={styles.menuItem}>
         <span style={{ display: "inline-flex", flex: "0 0 auto" }}>
@@ -651,7 +665,7 @@ export default function Header({ watchTitle = null }) {
       </Link>
       {session?.user?.role === "ADMIN" && (
         <Link href="/admin/users" role="menuitem" className={styles.menuItem}>
-          <span style={{ display: "inline-flex", flex: "0 0 auto", color: "var(--primary, #00e599)" }}>
+          <span style={{ display: "inline-flex", flex: "0 0 auto", color: "var(--role-admin, #f5c04a)" }}>
             <Shield size={17} strokeWidth={1.8} />
           </span>
           Admin Dashboard
@@ -679,21 +693,22 @@ export default function Header({ watchTitle = null }) {
           }}
         />
       )}
-      <div
+      <button
+        type="button"
         className={styles.airingToastBody}
         onClick={() => handleNotifClick(activeToastNotif)}
       >
-        <div className={styles.airingToastHead}>
+        <span className={styles.airingToastHead}>
           <span className={styles.airingToastBadge}>
             {activeToastNotif.badge || "Airing Today"}
           </span>
           {activeToastNotif.network && (
             <span className={styles.airingToastTime}>{activeToastNotif.network}</span>
           )}
-        </div>
+        </span>
         <b className={styles.airingToastTitle}>{activeToastNotif.title}</b>
-        <p className={styles.airingToastSub}>{activeToastNotif.subtitle}</p>
-      </div>
+        <span className={styles.airingToastSub}>{activeToastNotif.subtitle}</span>
+      </button>
       <button
         type="button"
         className={styles.airingToastClose}
@@ -774,6 +789,10 @@ export default function Header({ watchTitle = null }) {
                         <CalendarClock size={16} strokeWidth={1.8} />
                         <span>Schedule</span>
                       </Link>
+                      <Link href="/lists" className={styles.menuItem} onClick={() => setShowBrowseMenu(false)}>
+                        <Bookmark size={16} strokeWidth={1.8} />
+                        <span>Lists</span>
+                      </Link>
                       <Link href="/watchlist" className={styles.menuItem} onClick={() => setShowBrowseMenu(false)}>
                         <Bookmark size={16} strokeWidth={1.8} />
                         <span>Watchlist</span>
@@ -847,7 +866,7 @@ export default function Header({ watchTitle = null }) {
           >
             <div className={styles.searchModalBox} onClick={(e) => e.stopPropagation()}>
               <div className={styles.searchModalBar}>
-                <SearchPalette autoFocus wide />
+                <SearchPalette autoFocus wide onNavigate={() => setSearchModalOpen(false)} />
                 <button
                   type="button"
                   className={styles.searchModalCloseBtn}

@@ -1,20 +1,38 @@
 import { useRouter } from "next/router";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import Layout from "../../components/Layout";
 import { TitleGrid, Empty } from "../../components/Page";
 import { SkeletonGrid } from "../../components/Skeleton";
-import { useCustomLists } from "../../lib/store";
+import { getCardMap } from "../../lib/data.server";
+import { useCustomLists, entryCard, entryId } from "../../lib/store";
+import { formatRelativeUpdated } from "../../lib/accountHelpers";
 import { useToast } from "../../lib/useToast";
-import { ChevronLeft, Share2, Folder, User } from "lucide-react";
+import { ChevronLeft, Share2, User, Globe, Lock } from "lucide-react";
 import styles from "../../styles/Lists.module.css";
 
-export default function CustomListPage() {
+export async function getStaticPaths() {
+  return { paths: [], fallback: "blocking" };
+}
+
+export async function getStaticProps() {
+  const data = getCardMap();
+  return {
+    props: {
+      ...data,
+    },
+    revalidate: 1800,
+  };
+}
+
+export default function CustomListPage({ cardMap = {} }) {
   const router = useRouter();
   const { id } = router.query;
   const [customLists] = useCustomLists();
   const [listData, setListData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [resolvedRemoteCards, setResolvedRemoteCards] = useState({});
+  const fetchingIdsRef = useRef(new Set());
   const [toast, showToast] = useToast(2500);
 
   useEffect(() => {
@@ -23,39 +41,38 @@ export default function CustomListPage() {
     let active = true;
     setLoading(true);
 
-    // 1. Try to fetch from server API
+    const resolveLocal = () => {
+      const local = (customLists || []).find((l) => l.id === id);
+      if (!local) return null;
+      return {
+        id: local.id,
+        name: local.name,
+        description: local.description || "",
+        isPublic: local.isPublic !== false,
+        updatedAt: local.updatedAt || local.createdAt || null,
+        items: (local.items || []).map((it) => (typeof it === "object" ? it : { id: it })),
+        user: { name: "You" },
+      };
+    };
+
+    const local = resolveLocal();
+    if (local) {
+      setListData(local);
+      setLoading(false);
+      return;
+    }
+
+    // 1. Try to fetch shared/server list from API
     fetch(`/api/user/list?id=${encodeURIComponent(id)}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (!active) return;
-        if (data) {
-          setListData(data);
-          setLoading(false);
-        } else {
-          // 2. Fallback to local custom lists in client store
-          const local = (customLists || []).find((l) => l.id === id);
-          if (local) {
-            setListData({
-              id: local.id,
-              name: local.name,
-              items: (local.items || []).map((tId) => (typeof tId === "object" ? tId : { id: tId })),
-              user: { name: "You" },
-            });
-          }
-          setLoading(false);
-        }
+        setListData(data || null);
+        setLoading(false);
       })
       .catch(() => {
         if (!active) return;
-        const local = (customLists || []).find((l) => l.id === id);
-        if (local) {
-          setListData({
-            id: local.id,
-            name: local.name,
-            items: (local.items || []).map((tId) => (typeof tId === "object" ? tId : { id: tId })),
-            user: { name: "You" },
-          });
-        }
+        setListData(null);
         setLoading(false);
       });
 
@@ -63,6 +80,74 @@ export default function CustomListPage() {
       active = false;
     };
   }, [router.isReady, id, customLists]);
+
+  useEffect(() => {
+    const items = listData?.items || [];
+    if (!items.length) return;
+    const missing = [];
+    for (const entry of items) {
+      const direct = entryCard(entry);
+      if (direct && (direct.title || direct.poster || direct.backdrop)) continue;
+      const tid = entryId(entry);
+      if (!tid) continue;
+      const key = String(tid).toLowerCase();
+      if (cardMap[key] || resolvedRemoteCards[key] || fetchingIdsRef.current.has(key)) continue;
+      fetchingIdsRef.current.add(key);
+      missing.push({
+        id: String(tid),
+        key,
+        type: typeof entry === "object" ? entry?.type : null,
+      });
+    }
+    if (!missing.length) return;
+    let cancelled = false;
+    missing.slice(0, 16).forEach(async ({ id: tid, key, type }) => {
+      try {
+        let fetched = null;
+        if (tid.startsWith("al-")) {
+          const alRes = await fetch(`/api/anilist/details?id=${encodeURIComponent(tid.slice(3))}`);
+          if (alRes.ok) fetched = await alRes.json();
+        } else {
+          const hint = type === "series" || type === "tv" ? "&type=tv" : type === "movie" ? "&type=movie" : "";
+          const tmdbRes = await fetch(`/api/tmdb/details?id=${encodeURIComponent(tid)}${hint}`);
+          if (tmdbRes.ok) fetched = await tmdbRes.json();
+        }
+        if (!cancelled && fetched && (fetched.title || fetched.name || fetched.poster)) {
+          setResolvedRemoteCards((prev) => ({
+            ...prev,
+            [key]: { ...fetched, id: fetched.id || tid },
+          }));
+        }
+      } catch {}
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [listData?.items, cardMap, resolvedRemoteCards]);
+
+  const resolvedItems = useMemo(() => {
+    return (listData?.items || [])
+      .map((entry) => {
+        const direct = entryCard(entry);
+        if (direct && (direct.title || direct.poster || direct.backdrop)) return direct;
+        const tid = entryId(entry);
+        if (!tid) return null;
+        const key = String(tid).toLowerCase();
+        return (
+          cardMap[key] ||
+          resolvedRemoteCards[key] || {
+            id: String(tid),
+            title: `Title #${tid}`,
+            type: typeof entry === "object" && entry?.type ? entry.type : "movie",
+            poster: "",
+            backdrop: "",
+          }
+        );
+      })
+      .filter(Boolean);
+  }, [listData?.items, cardMap, resolvedRemoteCards]);
+
+  const updatedLabel = formatRelativeUpdated(listData?.updatedAt);
 
   const handleShare = () => {
     if (typeof window !== "undefined" && navigator?.clipboard) {
@@ -119,13 +204,24 @@ export default function CustomListPage() {
                     {listData.description}
                   </p>
                 )}
-                <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12, color: "rgba(255,255,255,0.5)", fontSize: 13 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginTop: 12, color: "rgba(255,255,255,0.55)", fontSize: 13 }}>
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
                     <User size={14} />
                     <span>Created by {listData.user?.name || "Community member"}</span>
                   </span>
                   <span>·</span>
-                  <span>{(listData.items || []).length} {listData.items?.length === 1 ? "title" : "titles"}</span>
+                  <span>{resolvedItems.length} {resolvedItems.length === 1 ? "title" : "titles"}</span>
+                  {updatedLabel && (
+                    <>
+                      <span>·</span>
+                      <span>{updatedLabel}</span>
+                    </>
+                  )}
+                  <span>·</span>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                    {listData.isPublic === false ? <Lock size={12} /> : <Globe size={12} />}
+                    <span>{listData.isPublic === false ? "Private" : "Public"}</span>
+                  </span>
                 </div>
               </div>
 
@@ -137,9 +233,9 @@ export default function CustomListPage() {
                   alignItems: "center",
                   gap: 8,
                   padding: "10px 18px",
-                  borderRadius: 10,
-                  background: "var(--surface-2, #14171d)",
-                  border: "1px solid rgba(255,255,255,0.14)",
+                  borderRadius: 999,
+                  background: "var(--g-fill, rgba(255,255,255,0.1))",
+                  border: "1px solid var(--g-edge, rgba(255,255,255,0.16))",
                   color: "#fff",
                   fontSize: 13,
                   fontWeight: 600,
@@ -151,8 +247,8 @@ export default function CustomListPage() {
               </button>
             </div>
 
-            {listData.items && listData.items.length > 0 ? (
-              <TitleGrid items={listData.items} wide={true} />
+            {resolvedItems.length > 0 ? (
+              <TitleGrid items={resolvedItems} wide={true} />
             ) : (
               <Empty
                 title="This list is empty"
@@ -165,7 +261,7 @@ export default function CustomListPage() {
         ) : (
           <Empty
             title="List not found"
-            text="The requested list could not be found or has been removed."
+            text="The requested list could not be found or is private."
             href="/lists"
             cta="Back to My list"
           />

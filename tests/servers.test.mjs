@@ -533,3 +533,47 @@ test("Dionysus (Play4U) is omitted when no IMDb ID can be resolved", () => {
   const dionysus = result.servers.find((s) => s.id === "dionysus");
   assert.equal(dionysus, undefined, "Dionysus should be omitted when no IMDb ID is available");
 });
+
+test("Server enable flags support DISABLED_SERVERS, ENABLED_SERVERS, and SERVER_<ID>_ENABLED without mutating defaults", async () => {
+  const { isServerEnabled, getPermittedServerOrigins } = await import("../lib/servers.js");
+
+  assert.equal(isServerEnabled("poseidon", {}), true);
+  assert.equal(isServerEnabled("poseidon", { DISABLED_SERVERS: "poseidon,zeus" }), false);
+  assert.equal(isServerEnabled("hera", { DISABLED_SERVERS: "poseidon,zeus" }), true);
+  assert.equal(isServerEnabled("zeus", { ENABLED_SERVERS: "poseidon,hera" }), false);
+  assert.equal(isServerEnabled("hera", { ENABLED_SERVERS: "poseidon,hera" }), true);
+  assert.equal(isServerEnabled("apollo", { SERVER_APOLLO_ENABLED: "false" }), false);
+
+  const filtered = resolveGreekGodSources({
+    id: "movie-315162",
+    type: "movie",
+    tmdbId: 315162,
+    env: { DISABLED_SERVERS: "poseidon" },
+  });
+
+  assert.equal(filtered.servers.some((s) => s.id === "poseidon"), false);
+  assert.equal(filtered.default, "zeus", "Fallback default should advance to first enabled server");
+
+  const origins = getPermittedServerOrigins({ ENABLED_SERVERS: "zeus,hera" });
+  assert.deepEqual(origins, ["https://vidy.st", "https://vidqueen.st"]);
+});
+
+test("buildCspDirectives emits exact enabled server origins and contains zero http:/https: wildcards", async () => {
+  const configModule = await import("../lib/servers.config.cjs");
+  const { buildCspDirectives } = configModule.default || configModule;
+
+  const fullCsp = buildCspDirectives({});
+  assert.ok(!/\shttps:(?:\s|;|$)/.test(fullCsp), "CSP must not contain bare https: wildcard");
+  assert.ok(!/\shttp:(?:\s|;|$)/.test(fullCsp), "CSP must not contain bare http: wildcard");
+  assert.match(fullCsp, /frame-src[^;]*https:\/\/embed\.vidrift\.net/);
+  assert.match(fullCsp, /frame-src[^;]*https:\/\/vidbolt\.xyz/);
+
+  const restrictedCsp = buildCspDirectives({
+    DISABLED_SERVERS: "poseidon,apollo",
+    STREAM_BOREAS_ORIGIN: "https://cdn.example.com/path",
+  });
+  assert.ok(!restrictedCsp.includes("https://embed.vidrift.net"), "Disabled server origin should be excluded from CSP");
+  assert.ok(!restrictedCsp.includes("https://vidbolt.xyz"), "Disabled server origin should be excluded from CSP");
+  assert.match(restrictedCsp, /connect-src[^;]*https:\/\/cdn\.example\.com/);
+  assert.match(restrictedCsp, /media-src[^;]*https:\/\/cdn\.example\.com/);
+});

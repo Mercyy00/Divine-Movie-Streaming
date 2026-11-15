@@ -146,6 +146,12 @@
   color: var(--text-soft);
 }
 
+.metaPart {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .ratingPill {
   display: inline-flex;
   align-items: center;
@@ -416,6 +422,12 @@
 
 .glassBtn:active {
   transform: scale(0.97);
+}
+
+.glassBtnActive {
+  background: rgba(255, 255, 255, 0.24);
+  border-color: rgba(255, 255, 255, 0.38);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
 
 .iconBtn {
@@ -1060,7 +1072,8 @@
   width: 86px;
   height: 86px;
   border-radius: 50%;
-  background: var(--surface-3);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.04));
+  border: 1px solid rgba(255, 255, 255, 0.12);
   display: grid;
   place-items: center;
   font-size: 24px;
@@ -1088,6 +1101,12 @@
 }
 
 .trailerCard {
+  display: block;
+  width: 100%;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
   border-radius: 12px;
   overflow: hidden;
   background: var(--surface-2);
@@ -1385,6 +1404,18 @@
 .closeModal:hover {
   background: rgba(255, 255, 255, 0.25);
   transform: scale(1.08);
+}
+
+.videoWrap {
+  width: 100%;
+  height: 100%;
+}
+
+.videoWrap iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
 }
 
 @keyframes popIn {
@@ -1962,6 +1993,26 @@
   opacity: 1;
 }
 
+.epThumbLink {
+  display: block;
+  width: 100%;
+  height: 100%;
+  text-decoration: none;
+  color: inherit;
+}
+
+.epThumbSkeleton {
+  aspect-ratio: 16 / 9;
+  border-radius: 12px;
+  width: 100%;
+}
+
+.epMetaSkeleton {
+  height: 36px;
+  border-radius: 8px;
+  width: 78%;
+}
+
 .epMeta {
   display: flex;
   flex-direction: column;
@@ -1969,6 +2020,8 @@
   min-width: 0;
   max-width: 100%;
   overflow: hidden;
+  text-decoration: none;
+  color: inherit;
 }
 
 .epTitle {

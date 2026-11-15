@@ -1,10 +1,13 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
+import { useSession } from "next-auth/react";
 import Layout from "../components/Layout";
 import { Empty } from "../components/Page";
 import { getCardMap } from "../lib/data.server";
 import { useToast } from "../lib/useToast";
+import { DEFAULT_AVATAR } from "../lib/avatars";
+import { formatRelativeUpdated } from "../lib/accountHelpers";
 
 export async function getStaticProps() {
   const data = getCardMap();
@@ -15,18 +18,20 @@ export async function getStaticProps() {
     revalidate: 1800,
   };
 }
+
 import {
   useList,
+  useHistory,
   useCustomLists,
   useReactions,
-  useHistory,
   useProfiles,
   useActiveProfileId,
   createCustomList,
+  updateCustomList,
+  reorderCustomListItems,
   deleteCustomList,
   clearCustomList,
   toggleCustomListItem,
-  removeFromHistory,
   entryCard,
   entryId,
   toggleListEntry,
@@ -42,13 +47,18 @@ import {
   Folder,
   Play,
   Info,
-  ExternalLink,
   Check,
   ThumbsDown,
   ThumbsUp,
   Heart,
   X,
   Share2,
+  Pencil,
+  ArrowUp,
+  ArrowDown,
+  Lock,
+  Globe,
+  GripVertical,
 } from "lucide-react";
 import styles from "../styles/Lists.module.css";
 
@@ -56,19 +66,109 @@ const DEFAULT_LIKED = [];
 
 export default function Lists({ cardMap = {} }) {
   const router = useRouter();
+  const { status: authStatus } = useSession();
   const [watchlist, setWatchlist] = useList();
+  const [history] = useHistory();
   const [customLists, setCustomLists] = useCustomLists();
   const [reactions, setReactions] = useReactions();
-  const [, setHistory] = useHistory();
   const [profiles] = useProfiles();
   const [activeProfileId] = useActiveProfileId();
+  const [resolvedRemoteCards, setResolvedRemoteCards] = useState({});
+  const fetchingIdsRef = useRef(new Set());
+
+  const fallbackCardMap = useMemo(() => {
+    const map = { ...resolvedRemoteCards };
+    const collect = (entry) => {
+      const card = entryCard(entry);
+      const id = entryId(entry) || card?.id;
+      if (id && card && (card.title || card.poster || card.backdrop)) {
+        map[String(id).toLowerCase()] = card;
+      }
+    };
+    (watchlist || []).forEach(collect);
+    (history || []).forEach(collect);
+    return map;
+  }, [watchlist, history, resolvedRemoteCards]);
+
+  const userLikedIds = useMemo(() => {
+    const list = Object.entries(reactions || {})
+      .filter(([_, r]) => r === "like" || r === "love")
+      .map(([id]) => id);
+    return list.length > 0 ? list : DEFAULT_LIKED;
+  }, [reactions]);
+
+  // Resolve any legacy bare-string IDs in custom lists, watchlist, or liked lists
+  useEffect(() => {
+    const allEntries = [
+      ...(watchlist || []),
+      ...userLikedIds,
+      ...(customLists || []).flatMap((l) => l.items || []),
+    ];
+
+    const missing = [];
+    for (const entry of allEntries) {
+      const direct = entryCard(entry);
+      if (direct && (direct.title || direct.poster || direct.backdrop)) continue;
+      const tid = entryId(entry);
+      if (tid === null || tid === undefined || tid === "") continue;
+      const key = String(tid).toLowerCase();
+      if (cardMap[key] || fallbackCardMap[key] || fetchingIdsRef.current.has(key)) continue;
+      fetchingIdsRef.current.add(key);
+      missing.push({
+        id: String(tid),
+        key,
+        type: typeof entry === "object" ? entry?.type : null,
+      });
+    }
+
+    if (missing.length === 0) return;
+
+    let cancelled = false;
+    missing.slice(0, 12).forEach(async ({ id, key, type }) => {
+      try {
+        let fetched = null;
+        if (id.startsWith("al-")) {
+          const alRes = await fetch(`/api/anilist/details?id=${encodeURIComponent(id.slice(3))}`);
+          if (alRes.ok) fetched = await alRes.json();
+        } else {
+          const hint = type === "series" || type === "tv" ? "&type=tv" : type === "movie" ? "&type=movie" : "";
+          const tmdbRes = await fetch(`/api/tmdb/details?id=${encodeURIComponent(id)}${hint}`);
+          if (tmdbRes.ok) fetched = await tmdbRes.json();
+        }
+        if (!cancelled && fetched && (fetched.title || fetched.name || fetched.poster)) {
+          setResolvedRemoteCards((prev) => ({
+            ...prev,
+            [key]: { ...fetched, id: fetched.id || id },
+          }));
+        }
+      } catch {}
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [customLists, watchlist, userLikedIds, cardMap, fallbackCardMap]);
 
   const resolveTitle = (id) => {
     if (!id) return null;
     let card = null;
-    if (typeof id === "object" && id.id) card = entryCard(id) || id;
-    else card = cardMap[String(id).toLowerCase()] || null;
-    if (!card) return null;
+    const tid = entryId(id);
+    if (typeof id === "object" && id.id) {
+      card = entryCard(id) || cardMap[String(tid).toLowerCase()] || fallbackCardMap[String(tid).toLowerCase()] || null;
+    } else {
+      const key = String(id).toLowerCase();
+      card = cardMap[key] || fallbackCardMap[key] || null;
+    }
+    if (!card) {
+      if (tid === null || tid === undefined || tid === "") return null;
+      return {
+        id: String(tid),
+        title: `Title #${tid}`,
+        type: typeof id === "object" && id.type ? id.type : "movie",
+        poster: "",
+        backdrop: "",
+      };
+    }
     const titleStr =
       typeof card.title === "string"
         ? card.title
@@ -76,23 +176,28 @@ export default function Lists({ cardMap = {} }) {
         ? card.name
         : typeof card.title?.title === "string"
         ? card.title.title
-        : String(card.id || "");
-    return { ...card, title: titleStr };
+        : String(card.id || tid || "");
+    return { ...card, id: card.id || tid, title: titleStr };
   };
 
   // Active profile info
   const activeProfile = useMemo(() => {
-    return (profiles || []).find((p) => p.id === activeProfileId) || profiles?.[0] || {
-      name: "Guest",
-      avatar: "https://image.tmdb.org/t/p/w185/8cdWjvZQUExUUTzyp4t6EDMubfO.jpg",
-    };
+    return (
+      (profiles || []).find((p) => p.id === activeProfileId) ||
+      profiles?.[0] || {
+        name: "Guest",
+        avatar: DEFAULT_AVATAR,
+      }
+    );
   }, [profiles, activeProfileId]);
 
-  // Selected list ID for detail view: null (shows folder grid) | "watchlist" | "liked" | customList.id
   const [selectedListId, setSelectedListId] = useState(null);
-  const [showNewModal, setShowNewModal] = useState(false);
-  const [newListName, setNewListName] = useState("");
+  const [listModalMode, setListModalMode] = useState(null); // "create" | "edit" | null
+  const [listFormName, setListFormName] = useState("");
+  const [listFormDesc, setListFormDesc] = useState("");
+  const [listFormPublic, setListFormPublic] = useState(true);
   const [typeFilter, setTypeFilter] = useState("all"); // "all" | "movie" | "series" | "anime"
+  const [dragIndex, setDragIndex] = useState(null);
 
   // Sync selectedListId from router query (?id=liked or ?tab=liked or ?list=liked)
   useEffect(() => {
@@ -102,13 +207,20 @@ export default function Lists({ cardMap = {} }) {
     }
   }, [router.isReady, router.query]);
 
-  // Context Menu State: { item, x, y } | null
+  // Close modal on Escape
+  useEffect(() => {
+    if (!listModalMode) return;
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") setListModalMode(null);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [listModalMode]);
+
   const [contextMenu, setContextMenu] = useState(null);
   const [toast, showToast] = useToast(2400);
-
   const menuRef = useRef(null);
 
-  // Close context menu on outside click or escape
   useEffect(() => {
     const handleClose = (e) => {
       if (menuRef.current && !menuRef.current.contains(e.target)) {
@@ -128,28 +240,75 @@ export default function Lists({ cardMap = {} }) {
     };
   }, []);
 
-  // Compute Liked titles
-  const userLikedIds = useMemo(() => {
-    const list = Object.entries(reactions || {})
-      .filter(([_, r]) => r === "like" || r === "love")
-      .map(([id]) => id);
-    return list.length > 0 ? list : DEFAULT_LIKED;
-  }, [reactions]);
-
-  // Handle new list creation
-  const handleCreateList = (e) => {
-    e.preventDefault();
-    const trimmed = (newListName || "").trim();
-    if (!trimmed) return;
-    const created = createCustomList(setCustomLists, trimmed);
-    setNewListName("");
-    setShowNewModal(false);
-    if (created?.id) {
-      setSelectedListId(created.id);
+  const syncRemoteList = async (method, payload) => {
+    if (authStatus !== "authenticated") return false;
+    try {
+      const res = await fetch("/api/user/list", {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (res.status === 404 && method === "PUT") {
+        const postRes = await fetch("/api/user/list", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        return postRes.ok;
+      }
+      return res.ok;
+    } catch {
+      return false;
     }
   };
 
-  // Determine active list details when inside a collection
+  const openCreateModal = () => {
+    setListFormName("");
+    setListFormDesc("");
+    setListFormPublic(true);
+    setListModalMode("create");
+  };
+
+  const openEditModal = (collection) => {
+    setListFormName(collection.title || "");
+    setListFormDesc(collection.description || "");
+    setListFormPublic(collection.isPublic !== false);
+    setListModalMode("edit");
+  };
+
+  const handleSaveListModal = (e) => {
+    e.preventDefault();
+    const trimmed = (listFormName || "").trim();
+    if (!trimmed) return;
+
+    if (listModalMode === "create") {
+      const created = createCustomList(setCustomLists, trimmed, null, {
+        description: listFormDesc,
+        isPublic: listFormPublic,
+      });
+      setListModalMode(null);
+      if (created?.id) {
+        setSelectedListId(created.id);
+        syncRemoteList("POST", created);
+        showToast(`Created "${created.name}"`);
+      }
+    } else if (listModalMode === "edit" && selectedListId) {
+      updateCustomList(setCustomLists, selectedListId, {
+        name: trimmed,
+        description: listFormDesc,
+        isPublic: listFormPublic,
+      });
+      syncRemoteList("PUT", {
+        id: selectedListId,
+        name: trimmed,
+        description: listFormDesc,
+        isPublic: listFormPublic,
+      });
+      setListModalMode(null);
+      showToast("List updated");
+    }
+  };
+
   const activeCollection = useMemo(() => {
     if (!selectedListId) return null;
     if (selectedListId === "watchlist") {
@@ -157,6 +316,8 @@ export default function Lists({ cardMap = {} }) {
       return {
         id: "watchlist",
         title: "Watchlist",
+        description: "Titles saved with the plus button.",
+        isPublic: false,
         items,
         isCustom: false,
         onClear: () => setWatchlist([]),
@@ -167,6 +328,8 @@ export default function Lists({ cardMap = {} }) {
       return {
         id: "liked",
         title: "Liked",
+        description: "Titles you liked or loved.",
+        isPublic: false,
         items,
         isCustom: false,
         onClear: () => {
@@ -186,19 +349,28 @@ export default function Lists({ cardMap = {} }) {
       return {
         id: custom.id,
         title: custom.name,
+        description: custom.description || "",
+        isPublic: custom.isPublic !== false,
+        updatedAt: custom.updatedAt || custom.createdAt || null,
+        rawItems: custom.items || [],
         items,
         isCustom: true,
-        onClear: () => clearCustomList(setCustomLists, custom.id),
+        onClear: () => {
+          clearCustomList(setCustomLists, custom.id);
+          syncRemoteList("PUT", { id: custom.id, items: [] });
+        },
         onDelete: () => {
           deleteCustomList(setCustomLists, custom.id);
+          syncRemoteList("DELETE", { id: custom.id });
           setSelectedListId(null);
+          showToast(`Deleted "${custom.name}"`);
         },
       };
     }
     return null;
-  }, [selectedListId, watchlist, userLikedIds, customLists, setWatchlist, setCustomLists, setReactions]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedListId, watchlist, userLikedIds, customLists, resolvedRemoteCards, setWatchlist, setCustomLists, setReactions]);
 
-  // Filter items by type (All, Movies, Series, Anime)
   const filteredCollectionItems = useMemo(() => {
     if (!activeCollection?.items) return [];
     if (typeFilter === "all") return activeCollection.items;
@@ -208,7 +380,23 @@ export default function Lists({ cardMap = {} }) {
     return activeCollection.items;
   }, [activeCollection?.items, typeFilter]);
 
-  // First title preview image helper
+  const canReorder = Boolean(activeCollection?.isCustom && typeFilter === "all" && filteredCollectionItems.length > 1);
+
+  const handleReorder = (fromIdx, toIdx) => {
+    if (!activeCollection?.isCustom || fromIdx === toIdx) return;
+    if (toIdx < 0 || toIdx >= activeCollection.items.length) return;
+    reorderCustomListItems(setCustomLists, activeCollection.id, fromIdx, toIdx);
+    const reorderedIds = [...(activeCollection.rawItems || [])];
+    if (fromIdx < reorderedIds.length && toIdx < reorderedIds.length) {
+      const [moved] = reorderedIds.splice(fromIdx, 1);
+      reorderedIds.splice(toIdx, 0, moved);
+      syncRemoteList("PUT", {
+        id: activeCollection.id,
+        items: reorderedIds.map((it) => resolveTitle(it) || it),
+      });
+    }
+  };
+
   const getPreviewImage = (ids) => {
     if (!ids || ids.length === 0) return null;
     for (const id of ids) {
@@ -219,18 +407,16 @@ export default function Lists({ cardMap = {} }) {
     return null;
   };
 
-  // Handle right-click on an item
   const handleItemContextMenu = (e, item) => {
     e.preventDefault();
     e.stopPropagation();
     const menuWidth = 240;
-    const menuHeight = 390;
+    const menuHeight = 360;
     const x = Math.min(e.clientX, window.innerWidth - menuWidth - 16);
     const y = Math.min(e.clientY, window.innerHeight - menuHeight - 16);
     setContextMenu({ item, x: Math.max(10, x), y: Math.max(10, y) });
   };
 
-  // Context Menu Actions
   const handleResume = (item) => {
     setContextMenu(null);
     router.push(`/watch/${item.id}`);
@@ -241,24 +427,17 @@ export default function Lists({ cardMap = {} }) {
     router.push(`/title/${item.id}`);
   };
 
-  const handleOpenInNewTab = (item) => {
-    setContextMenu(null);
-    window.open(`/title/${item.id}`, "_blank");
-  };
-
   const handleToggleWatchlist = (item) => {
     setContextMenu(null);
     toggleListEntry(setWatchlist, item.id, item);
-    showToast((watchlist || []).some((e) => entryId(e) === item.id)
-      ? "Removed from Watchlist"
-      : "Added to Watchlist");
+    showToast(inList(watchlist, item.id) ? "Removed from Watchlist" : "Added to Watchlist");
   };
 
   const handleToggleCustomList = (item, list) => {
     setContextMenu(null);
-    toggleCustomListItem(setCustomLists, list.id, item.id);
-    const inList = (list.items || []).includes(item.id);
-    showToast(inList ? `Removed from "${list.name}"` : `Added to "${list.name}"`);
+    const exists = inList(list.items, item.id);
+    toggleCustomListItem(setCustomLists, list.id, item.id, item);
+    showToast(exists ? `Removed from "${list.name}"` : `Added to "${list.name}"`);
   };
 
   const handleReaction = (item, type) => {
@@ -269,28 +448,27 @@ export default function Lists({ cardMap = {} }) {
       return { ...(prev || {}), [item.id]: next };
     });
     showToast(
-      type === "like"
-        ? "Added to Liked"
-        : type === "love"
-        ? "Loved this"
-        : "Disliked"
+      type === "like" ? "Added to Liked" : type === "love" ? "Loved this" : "Disliked"
     );
   };
 
   const handleRemoveFromList = (item) => {
     setContextMenu(null);
     if (activeCollection?.id === "watchlist") {
-      setWatchlist((l) => (l || []).filter((x) => x !== item.id));
+      setWatchlist((l) => (l || []).filter((x) => entryId(x) !== item.id && String(entryId(x)) !== String(item.id)));
       showToast("Removed from Watchlist");
     } else if (activeCollection?.isCustom) {
-      toggleCustomListItem(setCustomLists, activeCollection.id, item.id);
+      toggleCustomListItem(setCustomLists, activeCollection.id, item.id, item);
+      const remaining = (activeCollection.rawItems || []).filter((it) => String(entryId(it)) !== String(item.id));
+      syncRemoteList("PUT", {
+        id: activeCollection.id,
+        items: remaining.map((it) => resolveTitle(it) || it),
+      });
       showToast(`Removed from "${activeCollection.title}"`);
     } else if (activeCollection?.id === "liked") {
       setReactions((r) => ({ ...(r || {}), [item.id]: null }));
       showToast("Removed from Liked");
     }
-    // Also remove from continue watching / history
-    removeFromHistory(setHistory, item.id);
   };
 
   const handleShare = (item) => {
@@ -302,20 +480,39 @@ export default function Lists({ cardMap = {} }) {
     showToast("Link copied to clipboard");
   };
 
+  const shareCustomList = async (listId) => {
+    const listObj = (customLists || []).find((l) => l.id === listId);
+    if (listObj && authStatus === "authenticated") {
+      await syncRemoteList("PUT", {
+        id: listObj.id,
+        name: listObj.name,
+        description: listObj.description || "",
+        isPublic: listObj.isPublic !== false,
+        items: (listObj.items || []).map((it) => resolveTitle(it) || it),
+      });
+    }
+    const url = `${window.location.origin}/lists/${listId}`;
+    if (navigator?.clipboard) {
+      navigator.clipboard.writeText(url);
+    }
+    showToast("List link copied to clipboard");
+  };
+
   return (
     <Layout
       title={activeCollection ? activeCollection.title : "Lists"}
       description="Your personal watchlists and custom collections."
     >
       <div className={`pageInner ${styles.pageWrap}`}>
-        {/* If viewing a specific list detail (Split View Matching User Reference) */}
         {activeCollection ? (
           <div>
-            {/* Back Button: < Lists */}
             <button
               type="button"
               className={styles.backBtn}
-              onClick={() => setSelectedListId(null)}
+              onClick={() => {
+                setSelectedListId(null);
+                setTypeFilter("all");
+              }}
             >
               <ChevronLeft size={16} />
               <span>Lists</span>
@@ -325,10 +522,10 @@ export default function Lists({ cardMap = {} }) {
               {/* Left Side: Collection Card Banner */}
               <div className={styles.sideCard}>
                 <div className={styles.sideImgWrap}>
-                  {activeCollection.items.length > 0 && activeCollection.items[0]?.backdrop ? (
+                  {activeCollection.items.length > 0 && (activeCollection.items[0]?.backdrop || activeCollection.items[0]?.poster) ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      src={activeCollection.items[0].backdrop}
+                      src={activeCollection.items[0].backdrop || activeCollection.items[0].poster}
                       alt={activeCollection.title}
                       className={styles.sideImg}
                     />
@@ -341,11 +538,16 @@ export default function Lists({ cardMap = {} }) {
 
                 <h2 className={styles.sideTitle}>{activeCollection.title}</h2>
 
-                {/* Profile Badge */}
+                {activeCollection.description && (
+                  <p style={{ color: "rgba(255,255,255,0.68)", fontSize: 13.5, margin: "6px 0 12px", lineHeight: 1.45 }}>
+                    {activeCollection.description}
+                  </p>
+                )}
+
                 <div className={styles.profileBadge}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={activeProfile.avatar || "https://image.tmdb.org/t/p/w185/8cdWjvZQUExUUTzyp4t6EDMubfO.jpg"}
+                    src={activeProfile.avatar || DEFAULT_AVATAR}
                     alt={activeProfile.name || "Guest"}
                     className={styles.profileAvatar}
                   />
@@ -355,10 +557,30 @@ export default function Lists({ cardMap = {} }) {
                 <p className={styles.sideSub}>
                   {activeCollection.items.length}{" "}
                   {activeCollection.items.length === 1 ? "title" : "titles"}
+                  {activeCollection.updatedAt ? ` · ${formatRelativeUpdated(activeCollection.updatedAt)}` : ""}
                 </p>
+
+                {activeCollection.isCustom && (
+                  <p style={{ margin: "6px 0 0", fontSize: 12, color: "rgba(255,255,255,0.5)", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                    {activeCollection.isPublic ? <Globe size={12} /> : <Lock size={12} />}
+                    <span>{activeCollection.isPublic ? "Public link enabled" : "Private list"}</span>
+                  </p>
+                )}
 
                 {/* List Actions */}
                 <div style={{ marginTop: 16, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {activeCollection.isCustom && (
+                    <button
+                      type="button"
+                      className={styles.actionBtn}
+                      onClick={() => openEditModal(activeCollection)}
+                      title="Edit list details"
+                    >
+                      <Pencil size={13} />
+                      <span>Edit</span>
+                    </button>
+                  )}
+
                   {activeCollection.onClear && activeCollection.items.length > 0 && (
                     <button
                       type="button"
@@ -375,11 +597,7 @@ export default function Lists({ cardMap = {} }) {
                     <button
                       type="button"
                       className={styles.actionBtn}
-                      onClick={() => {
-                        const url = `${window.location.origin}/lists/${activeCollection.id}`;
-                        if (navigator?.clipboard) navigator.clipboard.writeText(url);
-                        showToast("List link copied to clipboard");
-                      }}
+                      onClick={() => shareCustomList(activeCollection.id)}
                       title="Share this list"
                     >
                       <Share2 size={13} />
@@ -403,8 +621,7 @@ export default function Lists({ cardMap = {} }) {
 
               {/* Right Side: Numbered Tracklist of Items */}
               <div className={styles.listTrackList}>
-                {/* Partition Type Tabs */}
-                <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+                <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
                   {[
                     { value: "all", label: "All" },
                     { value: "movie", label: "Movies" },
@@ -417,12 +634,12 @@ export default function Lists({ cardMap = {} }) {
                       onClick={() => setTypeFilter(tab.value)}
                       style={{
                         padding: "6px 14px",
-                        borderRadius: 20,
+                        borderRadius: 999,
                         fontSize: 13,
                         fontWeight: 600,
-                        background: typeFilter === tab.value ? "#ffffff" : "var(--surface-2, #14171d)",
-                        color: typeFilter === tab.value ? "#000000" : "rgba(255,255,255,0.7)",
-                        border: "1px solid rgba(255,255,255,0.12)",
+                        background: typeFilter === tab.value ? "#ffffff" : "var(--g-fill, rgba(255,255,255,0.08))",
+                        color: typeFilter === tab.value ? "#000000" : "rgba(255,255,255,0.75)",
+                        border: "1px solid var(--g-edge, rgba(255,255,255,0.14))",
                         cursor: "pointer",
                       }}
                     >
@@ -434,7 +651,9 @@ export default function Lists({ cardMap = {} }) {
                 {filteredCollectionItems.length > 0 ? (
                   filteredCollectionItems.map((item, index) => {
                     const typeLabel =
-                      item.type === "series" || item.type === "anime"
+                      item.type === "anime"
+                        ? "Anime"
+                        : item.type === "series" || item.type === "tv"
                         ? "Series"
                         : "Movie";
 
@@ -442,34 +661,84 @@ export default function Lists({ cardMap = {} }) {
                       <div
                         key={item.id}
                         className={styles.itemRow}
-                        onClick={() => router.push(`/title/${item.id}`)}
-                        onContextMenu={(e) => handleItemContextMenu(e, item)}
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") router.push(`/title/${item.id}`);
+                        draggable={canReorder}
+                        onDragStart={() => setDragIndex(index)}
+                        onDragOver={(e) => {
+                          if (canReorder) e.preventDefault();
                         }}
+                        onDrop={() => {
+                          if (canReorder && dragIndex !== null) {
+                            handleReorder(dragIndex, index);
+                          }
+                          setDragIndex(null);
+                        }}
+                        onDragEnd={() => setDragIndex(null)}
+                        onContextMenu={(e) => handleItemContextMenu(e, item)}
                       >
-                        {/* Number */}
+                        {canReorder && (
+                          <span
+                            style={{ color: "rgba(255,255,255,0.32)", cursor: "grab", display: "inline-flex" }}
+                            aria-hidden="true"
+                          >
+                            <GripVertical size={14} />
+                          </span>
+                        )}
+
                         <span className={styles.itemRank}>{index + 1}</span>
 
-                        {/* Thumbnail */}
-                        <div className={styles.itemThumb}>
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={item.backdrop || item.poster}
-                            alt={item.title}
-                            className={styles.itemThumbImg}
-                          />
-                        </div>
+                        <Link
+                          href={`/title/${item.id}`}
+                          style={{ display: "flex", alignItems: "center", gap: 14, flex: 1, minWidth: 0, textDecoration: "none", color: "inherit" }}
+                        >
+                          <div className={styles.itemThumb}>
+                            {item.backdrop || item.poster ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={item.backdrop || item.poster}
+                                alt={item.title}
+                                className={styles.itemThumbImg}
+                              />
+                            ) : (
+                              <div className={styles.frontEmpty}>
+                                <Folder size={18} opacity={0.35} />
+                              </div>
+                            )}
+                          </div>
 
-                        {/* Title & Sub */}
-                        <div className={styles.itemInfo}>
-                          <h4 className={styles.itemTitle}>{item.title}</h4>
-                          <p className={styles.itemSub}>
-                            {item.year ? `${typeLabel} · ${item.year}` : typeLabel}
-                          </p>
-                        </div>
+                          <div className={styles.itemInfo}>
+                            <h4 className={styles.itemTitle}>{item.title}</h4>
+                            <p className={styles.itemSub}>
+                              {item.year ? `${typeLabel} · ${item.year}` : typeLabel}
+                            </p>
+                          </div>
+                        </Link>
+
+                        {canReorder && (
+                          <div style={{ display: "inline-flex", gap: 4 }}>
+                            <button
+                              type="button"
+                              className={styles.actionBtn}
+                              style={{ padding: "5px 7px" }}
+                              disabled={index === 0}
+                              onClick={() => handleReorder(index, index - 1)}
+                              aria-label={`Move ${item.title} up`}
+                              title="Move up"
+                            >
+                              <ArrowUp size={13} />
+                            </button>
+                            <button
+                              type="button"
+                              className={styles.actionBtn}
+                              style={{ padding: "5px 7px" }}
+                              disabled={index === filteredCollectionItems.length - 1}
+                              onClick={() => handleReorder(index, index + 1)}
+                              aria-label={`Move ${item.title} down`}
+                              title="Move down"
+                            >
+                              <ArrowDown size={13} />
+                            </button>
+                          </div>
+                        )}
                       </div>
                     );
                   })
@@ -485,7 +754,6 @@ export default function Lists({ cardMap = {} }) {
             </div>
           </div>
         ) : (
-          /* Main Overview - Folder Collections Grid (Matches Image 2) */
           <>
             <div className={styles.topRow}>
               <div>
@@ -499,7 +767,7 @@ export default function Lists({ cardMap = {} }) {
                 <button
                   type="button"
                   className={styles.topBtn}
-                  onClick={() => setShowNewModal(true)}
+                  onClick={openCreateModal}
                 >
                   <Plus size={16} />
                   <span>New list</span>
@@ -593,87 +861,111 @@ export default function Lists({ cardMap = {} }) {
               {(customLists || []).map((list) => {
                 const count = (list.items || []).length;
                 const preview = getPreviewImage(list.items);
+                const updatedLabel = formatRelativeUpdated(list.updatedAt || list.createdAt);
                 return (
-                  <button
-                    key={list.id}
-                    type="button"
-                    className={styles.folderCard}
-                    onClick={() => setSelectedListId(list.id)}
-                  >
-                    <div className={styles.folderStack}>
-                      <div className={styles.stackLayer2} />
-                      <div className={styles.stackLayer1} />
-                      <div className={styles.frontCard}>
-                        {preview ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={preview}
-                            alt={`${list.name} preview`}
-                            className={styles.frontImg}
-                          />
-                        ) : (
-                          <div className={styles.frontEmpty}>
-                            <Folder size={32} opacity={0.3} />
+                  <div key={list.id} className={styles.folderCard} style={{ position: "relative" }}>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedListId(list.id)}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        padding: 0,
+                        textAlign: "left",
+                        color: "inherit",
+                        cursor: "pointer",
+                        width: "100%",
+                      }}
+                    >
+                      <div className={styles.folderStack}>
+                        <div className={styles.stackLayer2} />
+                        <div className={styles.stackLayer1} />
+                        <div className={styles.frontCard}>
+                          {preview ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={preview}
+                              alt={`${list.name} preview`}
+                              className={styles.frontImg}
+                            />
+                          ) : (
+                            <div className={styles.frontEmpty}>
+                              <Folder size={32} opacity={0.3} />
+                            </div>
+                          )}
+                          <div className={styles.frontShade} />
+                          <div className={styles.countBadge}>
+                            <Menu size={13} strokeWidth={2.5} />
+                            <span>{count}</span>
                           </div>
-                        )}
-                        <div className={styles.frontShade} />
-                        <div className={styles.countBadge}>
-                          <Menu size={13} strokeWidth={2.5} />
-                          <span>{count}</span>
                         </div>
                       </div>
-                    </div>
+                    </button>
                     <div className={styles.folderMeta}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <h3 className={styles.folderTitle}>{list.name}</h3>
-                        <span
-                          role="button"
-                          tabIndex={0}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const url = `${window.location.origin}/lists/${list.id}`;
-                            if (navigator?.clipboard) navigator.clipboard.writeText(url);
-                            showToast("List link copied to clipboard");
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedListId(list.id)}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            padding: 0,
+                            textAlign: "left",
+                            color: "inherit",
+                            cursor: "pointer",
+                            flex: 1,
+                            minWidth: 0,
                           }}
-                          title="Share list"
+                        >
+                          <h3 className={styles.folderTitle}>{list.name}</h3>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => shareCustomList(list.id)}
+                          title={`Share ${list.name}`}
+                          aria-label={`Share ${list.name}`}
                           style={{
                             display: "inline-flex",
                             alignItems: "center",
                             justifyContent: "center",
                             padding: 6,
                             borderRadius: 6,
-                            color: "rgba(255,255,255,0.6)",
+                            background: "none",
+                            border: "none",
+                            color: "rgba(255,255,255,0.65)",
                             cursor: "pointer",
                           }}
                         >
                           <Share2 size={13} />
-                        </span>
+                        </button>
                       </div>
                       <p className={styles.folderSub}>
                         {count} {count === 1 ? "title" : "titles"}
+                        {updatedLabel ? ` · ${updatedLabel}` : ""}
                       </p>
                     </div>
-                  </button>
+                  </div>
                 );
               })}
             </div>
           </>
         )}
 
-        {/* Working Right-Click Context Menu (Matches Image 3 Exactly) */}
+        {/* Right-Click Context Menu */}
         {contextMenu && (
           <div
             ref={menuRef}
             className={styles.contextMenu}
+            role="menu"
             style={{
               top: `${contextMenu.y}px`,
               left: `${contextMenu.x}px`,
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* 1. Resume */}
             <button
               type="button"
+              role="menuitem"
               className={styles.menuItem}
               onClick={() => handleResume(contextMenu.item)}
             >
@@ -681,9 +973,9 @@ export default function Lists({ cardMap = {} }) {
               <span>Resume</span>
             </button>
 
-            {/* 2. Details */}
             <button
               type="button"
+              role="menuitem"
               className={styles.menuItem}
               onClick={() => handleDetails(contextMenu.item)}
             >
@@ -691,19 +983,9 @@ export default function Lists({ cardMap = {} }) {
               <span>Details</span>
             </button>
 
-            {/* 3. Open in new tab */}
             <button
               type="button"
-              className={styles.menuItem}
-              onClick={() => handleOpenInNewTab(contextMenu.item)}
-            >
-              <ExternalLink size={14} />
-              <span>Open in new tab</span>
-            </button>
-
-            {/* 4. Add to watchlist / In watchlist */}
-            <button
-              type="button"
+              role="menuitem"
               className={styles.menuItem}
               onClick={() => handleToggleWatchlist(contextMenu.item)}
             >
@@ -720,13 +1002,13 @@ export default function Lists({ cardMap = {} }) {
               )}
             </button>
 
-            {/* 5. Custom lists toggles (e.g. marevel) */}
             {(customLists || []).map((cl) => {
-              const inCustom = (cl.items || []).includes(contextMenu.item.id);
+              const inCustom = inList(cl.items, contextMenu.item.id);
               return (
                 <button
                   key={cl.id}
                   type="button"
+                  role="menuitem"
                   className={`${styles.menuItem} ${inCustom ? styles.menuItemActive : ""}`}
                   onClick={() => handleToggleCustomList(contextMenu.item, cl)}
                 >
@@ -737,9 +1019,9 @@ export default function Lists({ cardMap = {} }) {
               );
             })}
 
-            {/* 6. Dislike */}
             <button
               type="button"
+              role="menuitem"
               className={styles.menuItem}
               onClick={() => handleReaction(contextMenu.item, "dislike")}
             >
@@ -750,9 +1032,9 @@ export default function Lists({ cardMap = {} }) {
               <span>Dislike</span>
             </button>
 
-            {/* 7. I like this */}
             <button
               type="button"
+              role="menuitem"
               className={styles.menuItem}
               onClick={() => handleReaction(contextMenu.item, "like")}
             >
@@ -763,9 +1045,9 @@ export default function Lists({ cardMap = {} }) {
               <span>I like this</span>
             </button>
 
-            {/* 8. Love this */}
             <button
               type="button"
+              role="menuitem"
               className={styles.menuItem}
               onClick={() => handleReaction(contextMenu.item, "love")}
             >
@@ -776,9 +1058,9 @@ export default function Lists({ cardMap = {} }) {
               <span>Love this</span>
             </button>
 
-            {/* 9. Remove from continue watching / remove from list */}
             <button
               type="button"
+              role="menuitem"
               className={styles.menuItem}
               onClick={() => handleRemoveFromList(contextMenu.item)}
             >
@@ -788,15 +1070,13 @@ export default function Lists({ cardMap = {} }) {
                   ? "Remove from watchlist"
                   : activeCollection?.id === "liked"
                   ? "Remove from liked"
-                  : activeCollection
-                  ? `Remove from ${activeCollection.title}`
-                  : "Remove from continue watching"}
+                  : `Remove from ${activeCollection?.title || "list"}`}
               </span>
             </button>
 
-            {/* 10. Share */}
             <button
               type="button"
+              role="menuitem"
               className={styles.menuItem}
               onClick={() => handleShare(contextMenu.item)}
             >
@@ -806,12 +1086,20 @@ export default function Lists({ cardMap = {} }) {
           </div>
         )}
 
-        {/* Create New List Modal */}
-        {showNewModal && (
-          <div className={styles.modalBackdrop} onClick={() => setShowNewModal(false)}>
-            <div className={styles.modalBox} onClick={(e) => e.stopPropagation()}>
-              <h2 className={styles.modalTitle}>Create New List</h2>
-              <form onSubmit={handleCreateList}>
+        {/* Create / Edit List Modal */}
+        {listModalMode && (
+          <div className={styles.modalBackdrop} onClick={() => setListModalMode(null)}>
+            <div
+              className={styles.modalBox}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="list-modal-title"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h2 id="list-modal-title" className={styles.modalTitle}>
+                {listModalMode === "edit" ? "Edit List" : "Create New List"}
+              </h2>
+              <form onSubmit={handleSaveListModal}>
                 <div className={styles.inputGroup}>
                   <label htmlFor="list-name" className={styles.label}>
                     List Name
@@ -819,30 +1107,55 @@ export default function Lists({ cardMap = {} }) {
                   <input
                     id="list-name"
                     type="text"
-                    placeholder="e.g. Marvel Movies, Anime Binge"
-                    value={newListName}
-                    onChange={(e) => setNewListName(e.target.value)}
+                    placeholder="e.g. Weekend Watch, Anime Binge"
+                    value={listFormName}
+                    onChange={(e) => setListFormName(e.target.value)}
                     className={styles.input}
                     autoFocus
-                    maxLength={32}
+                    maxLength={48}
                     required
                   />
                 </div>
+
+                <div className={styles.inputGroup}>
+                  <label htmlFor="list-desc" className={styles.label}>
+                    Description (optional)
+                  </label>
+                  <textarea
+                    id="list-desc"
+                    rows={3}
+                    placeholder="What brings these titles together?"
+                    value={listFormDesc}
+                    onChange={(e) => setListFormDesc(e.target.value.slice(0, 200))}
+                    className={styles.input}
+                    style={{ height: "auto", padding: "10px 12px", resize: "none", fontFamily: "inherit" }}
+                    maxLength={200}
+                  />
+                </div>
+
+                <label style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18, fontSize: 13.5, color: "rgba(255,255,255,0.8)", cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={listFormPublic}
+                    onChange={(e) => setListFormPublic(e.target.checked)}
+                  />
+                  <span>Allow sharing via public link</span>
+                </label>
 
                 <div className={styles.modalActions}>
                   <button
                     type="button"
                     className={styles.cancelBtn}
-                    onClick={() => setShowNewModal(false)}
+                    onClick={() => setListModalMode(null)}
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     className={styles.saveBtn}
-                    disabled={!newListName.trim()}
+                    disabled={!listFormName.trim()}
                   >
-                    Create
+                    {listModalMode === "edit" ? "Save" : "Create"}
                   </button>
                 </div>
               </form>
@@ -850,7 +1163,6 @@ export default function Lists({ cardMap = {} }) {
           </div>
         )}
 
-        {/* Toast Notification */}
         {toast && <div className={styles.toast}>{toast}</div>}
       </div>
     </Layout>

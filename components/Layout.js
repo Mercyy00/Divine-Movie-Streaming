@@ -72,9 +72,17 @@ export default function Layout({
           <Link href="/terms">Terms</Link>
           <Link href="/dmca">DMCA</Link>
         </div>
-        <p>
-          {BRAND.name} is a curated streaming interface for movies, series, and anime.
-          This product uses the TMDB API but is not endorsed or certified by TMDB.
+        <p style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, flexWrap: "wrap" }}>
+          <span>
+            {BRAND.name} is a curated streaming interface for movies, series, and anime.
+            This product uses the TMDB API but is not endorsed or certified by TMDB.
+          </span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/brands/tmdb.svg"
+            alt="TMDB"
+            style={{ height: 14, width: "auto", opacity: 0.78, verticalAlign: "middle" }}
+          />
         </p>
       </footer>
       <MobileNav />

@@ -190,19 +190,64 @@
   }
 }
 
-.list {
+.sectionsScroll {
+  overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+  display: flex;
   flex-direction: column;
-  flex: 1 1 0%;
+  gap: 8px;
   min-height: 0;
+  flex: 1 1 auto;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sectionHeader {
+  padding: 6px 10px 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.48);
+}
+
+.didYouMean {
+  padding: 8px 14px;
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, 0.72);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 122, 48, 0.08);
+  border-radius: 10px;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.didYouMeanBtn {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  color: #ffffff;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+  font: inherit;
+}
+
+.list {
+  flex-direction: column;
   padding: 0;
   margin: 0;
   display: flex;
   gap: 2px;
   position: relative;
-  overflow-y: auto;
   list-style: none;
 }
 
@@ -283,6 +328,23 @@
 }
 
 .resultPoster img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.resultAvatar {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--surface-3, #151922);
+  margin-left: auto;
+}
+
+.resultAvatar img {
   width: 100%;
   height: 100%;
   object-fit: cover;

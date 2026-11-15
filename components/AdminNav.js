@@ -29,11 +29,11 @@ export default function AdminNav({ activeTab = "users" }) {
             width: 38,
             height: 38,
             borderRadius: 10,
-            background: "rgba(0, 229, 153, 0.12)",
-            border: "1px solid rgba(0, 229, 153, 0.3)",
+            background: "rgba(245, 192, 74, 0.12)",
+            border: "1px solid rgba(245, 192, 74, 0.28)",
             display: "grid",
             placeItems: "center",
-            color: "var(--primary, #00e599)",
+            color: "var(--role-admin, #f5c04a)",
           }}
         >
           <Shield size={20} />
@@ -73,7 +73,7 @@ export default function AdminNav({ activeTab = "users" }) {
                   : "1px solid rgba(255, 255, 255, 0.08)",
               }}
             >
-              <Icon size={15} style={{ color: isActive ? "var(--primary, #00e599)" : "inherit" }} />
+              <Icon size={15} style={{ color: isActive ? "var(--primary, #ffffff)" : "inherit" }} />
               <span>{label}</span>
             </Link>
           );

@@ -65,5 +65,22 @@
 }
 @media (prefers-reduced-transparency: reduce) {
   :root { --g-fill: rgba(22,26,38,.96); --g-fill-hover: rgba(34,40,56,.98); }
-  [class*="_actionPillBtn"], [class*="_detailsBtn"] { -webkit-backdrop-filter: none; backdrop-filter: none; }
+  [class*="_actionPillBtn"], [class*="_detailsBtn"], .chip, .popGlass, .barGlass, .toastPill {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [class*="_detailsBtn"],
+  [class*="_actionPillBtn"],
+  [class*="_filterTab"],
+  [class*="_pillActionBtn"],
+  [class*="_markAllBtn"],
+  [class*="_notesTabBtn"],
+  .chip,
+  .toastPill {
+    transition: none !important;
+    animation: none !important;
+  }
 }

@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { Plus, Pencil, Check, Trash2, X } from "lucide-react";
+import { Plus, Pencil, Check, Trash2 } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { BRAND } from "../lib/constants";
 import {
   useProfiles,
@@ -14,7 +15,7 @@ import {
   deleteProfile,
   PROFILE_AVATARS,
 } from "../lib/store";
-import { AVATAR_CATEGORIES } from "../lib/avatars";
+import { AVATAR_CATEGORIES, DEFAULT_AVATAR } from "../lib/avatars";
 import styles from "../styles/Profiles.module.css";
 
 export default function Profiles() {
@@ -34,6 +35,17 @@ export default function Profiles() {
   const [avatarCategory, setAvatarCategory] = useState("All");
   const [selectingId, setSelectingId] = useState(null);
 
+  useEffect(() => {
+    if (!modalMode) return;
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") {
+        setModalMode(null);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [modalMode]);
+
   const visibleAvatars =
     avatarCategory === "All"
       ? PROFILE_AVATARS
@@ -43,7 +55,7 @@ export default function Profiles() {
     {
       id: "guest",
       name: "Guest",
-      avatar: "https://image.tmdb.org/t/p/w185/8cdWjvZQUExUUTzyp4t6EDMubfO.jpg",
+      avatar: DEFAULT_AVATAR,
       isKids: false,
     },
   ];
@@ -102,6 +114,7 @@ export default function Profiles() {
         ...s,
         name: trimmed,
         avatar: formAvatar,
+        isKids: Boolean(formIsKids),
       }));
     }
     setModalMode(null);
@@ -155,12 +168,14 @@ export default function Profiles() {
             const isThisSelected = selectingId === p.id;
             const isDimmed = selectingId && !isThisSelected;
             return (
-              <button
+              <motion.button
                 key={p.id}
                 type="button"
                 className={`${styles.profileItem} ${isDimmed ? styles.itemDimmed : ""}`}
                 onClick={() => handleSelectProfile(p)}
                 aria-label={managing ? `Edit ${p.name}` : `Select ${p.name}`}
+                animate={isThisSelected ? { scale: 1.08 } : { scale: 1 }}
+                transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
               >
                 <div
                   className={`${styles.avatarCircle} ${
@@ -197,7 +212,7 @@ export default function Profiles() {
                   )}
                 </div>
                 <span className={styles.profileName}>{p.name}</span>
-              </button>
+              </motion.button>
             );
           })}
 
@@ -248,11 +263,30 @@ export default function Profiles() {
           </Link>
         </div>
 
+        <AnimatePresence>
         {/* Add Profile Modal */}
         {modalMode === "add" && (
-          <div className={styles.modalBackdrop} onClick={() => setModalMode(null)}>
-            <div className={styles.modalBox} onClick={(e) => e.stopPropagation()}>
-              <h2 className={styles.modalTitle}>Add Profile</h2>
+          <motion.div
+            key="add-modal"
+            className={styles.modalBackdrop}
+            onClick={() => setModalMode(null)}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
+          >
+            <motion.div
+              className={styles.modalBox}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="add-profile-title"
+              onClick={(e) => e.stopPropagation()}
+              initial={{ opacity: 0, scale: 0.96, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 8 }}
+              transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <h2 id="add-profile-title" className={styles.modalTitle}>Add Profile</h2>
               <form onSubmit={handleSaveAdd}>
                 <div className={styles.avatarCategoryTabs}>
                   {AVATAR_CATEGORIES.map((cat) => (
@@ -333,15 +367,33 @@ export default function Profiles() {
                   </button>
                 </div>
               </form>
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
         )}
 
         {/* Edit Profile Modal */}
         {modalMode === "edit" && editingProfile && (
-          <div className={styles.modalBackdrop} onClick={() => setModalMode(null)}>
-            <div className={styles.modalBox} onClick={(e) => e.stopPropagation()}>
-              <h2 className={styles.modalTitle}>Edit Profile</h2>
+          <motion.div
+            key="edit-modal"
+            className={styles.modalBackdrop}
+            onClick={() => setModalMode(null)}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
+          >
+            <motion.div
+              className={styles.modalBox}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="edit-profile-title"
+              onClick={(e) => e.stopPropagation()}
+              initial={{ opacity: 0, scale: 0.96, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 8 }}
+              transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <h2 id="edit-profile-title" className={styles.modalTitle}>Edit Profile</h2>
               <form onSubmit={handleSaveEdit}>
                 <div className={styles.avatarCategoryTabs}>
                   {AVATAR_CATEGORIES.map((cat) => (
@@ -412,6 +464,7 @@ export default function Profiles() {
                       className={styles.deleteBtn}
                       onClick={handleDeleteProfile}
                       title="Delete this profile"
+                      aria-label="Delete this profile"
                     >
                       <Trash2 size={16} />
                     </button>
@@ -432,9 +485,10 @@ export default function Profiles() {
                   </button>
                 </div>
               </form>
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
         )}
+        </AnimatePresence>
       </main>
     </>
   );

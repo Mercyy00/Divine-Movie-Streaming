@@ -226,8 +226,8 @@
   box-sizing: content-box;
   padding: 12px 12px 12px 14px;
   border-radius: 999px;
-  background: var(--primary, #00e599);
-  color: var(--on-accent, #000);
+  background: var(--primary, #ffffff);
+  color: var(--on-accent, #080808);
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.6);
 }
 

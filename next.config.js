@@ -1,23 +1,11 @@
 /** @type {import('next').NextConfig} */
+const { buildCspDirectives } = require("./lib/servers.config.cjs");
 
-const csp = [
-  "default-src 'self'",
-  "img-src 'self' data: blob: https://image.tmdb.org https://img.youtube.com https://s4.anilist.co https:",
-  "frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com https://*.playdrive.vip https://playdrive.vip https://*.vidrift.net https://embed.vidrift.net https://*.vidy.st https://vidy.st https://*.vidqueen.st https://vidqueen.st https://*.vidstuck.cc https://vidstuck.cc https://*.vidbolt.co https://vidbolt.co https://*.rivestream.app https://www.rivestream.app https://*.cinezo.live https://player.cinezo.live https://*.atlantic.st https://atlantic.st https:",
-  "connect-src 'self' https://image.tmdb.org https://api.themoviedb.org https://graphql.anilist.co https://*.youtube.com https://*.supabase.co wss://*.supabase.co https: http:",
-  "media-src 'self' blob: https:",
-  "worker-src 'self' blob:",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  "font-src 'self' data: https://fonts.gstatic.com",
-  "frame-ancestors 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-].join("; ");
+const csp = buildCspDirectives(process.env);
 
 module.exports = {
   distDir: process.env.VIVARIUM_TEST_BUILD === "1" ? ".next-test" : ".next",
-  output: process.env.STANDALONE === "1" ? "standalone" : undefined,
+  output: "standalone",
   reactStrictMode: true,
   poweredByHeader: false,
   images: {
@@ -30,6 +18,10 @@ module.exports = {
         protocol: "https",
         hostname: "img.youtube.com",
       },
+      {
+        protocol: "https",
+        hostname: "s4.anilist.co",
+      },
     ],
   },
   async headers() {
@@ -39,7 +31,6 @@ module.exports = {
         headers: [
           { key: "Content-Security-Policy", value: csp },
           { key: "X-Content-Type-Options", value: "nosniff" },
-          { key: "X-Frame-Options", value: "SAMEORIGIN" },
           { key: "Referrer-Policy", value: "no-referrer-when-downgrade" },
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
           { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },

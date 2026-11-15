@@ -1,18 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/router";
-import { Search, Clock, X } from "lucide-react";
+import { Search, Clock, X, User } from "lucide-react";
 import Art from "./Art";
 import { TYPE_LABEL } from "../lib/constants";
 import { useSearches } from "../lib/store";
+import { buildGroupedSearchSections } from "../lib/searchHelpers";
 import styles from "./SearchPalette.module.css";
 
-export default function SearchPalette({ autoFocus = false, wide = false }) {
+export default function SearchPalette({ autoFocus = false, wide = false, onNavigate = null }) {
   const router = useRouter();
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
   const [searches, setSearches] = useSearches();
   const [liveResults, setLiveResults] = useState([]);
+  const [peopleResults, setPeopleResults] = useState([]);
   const [trending, setTrending] = useState([]);
   const [didYouMean, setDidYouMean] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -26,14 +28,14 @@ export default function SearchPalette({ autoFocus = false, wide = false }) {
     }
   }, [router.isReady, router.pathname, router.query.q]);
 
-  // Fetch top trending titles for default suggestions when input is empty & no history
+  // Fetch top trending titles for default suggestions when input is empty
   useEffect(() => {
     let mounted = true;
     fetch("/api/tmdb/discover?category=trending&type=movie&time_window=week")
       .then((r) => (r.ok ? r.json() : []))
       .then((data) => {
         if (mounted && Array.isArray(data) && data.length > 0) {
-          setTrending(data.slice(0, 8));
+          setTrending(data.slice(0, 6));
         }
       })
       .catch(() => {});
@@ -43,10 +45,11 @@ export default function SearchPalette({ autoFocus = false, wide = false }) {
   }, []);
 
   useEffect(() => {
-    let active = true;
+    let activeReq = true;
     const query = q.trim();
     if (!query) {
       setLiveResults([]);
+      setPeopleResults([]);
       setDidYouMean(null);
       setLoading(false);
       return;
@@ -55,52 +58,76 @@ export default function SearchPalette({ autoFocus = false, wide = false }) {
     setLoading(true);
     const controller = new AbortController();
     const timer = setTimeout(() => {
-      fetch(`/api/tmdb/search?q=${encodeURIComponent(query)}&limit=8`, {
+      const tmdbReq = fetch(`/api/tmdb/search?q=${encodeURIComponent(query)}&limit=8`, {
         signal: controller.signal,
       })
         .then(async (r) => {
-          if (!active || controller.signal.aborted) return null;
+          if (!activeReq || controller.signal.aborted) return { items: [], suggestion: null };
           const suggestion = r.headers.get("X-Did-You-Mean");
           const data = r.ok ? await r.json() : [];
-          return { data, suggestion };
+          const items = Array.isArray(data) ? data : data?.results || [];
+          return { items, suggestion: suggestion || data?.didYouMean || null };
         })
-        .then((res) => {
-          if (!res) return;
-          const { data, suggestion } = res;
-          if (active && !controller.signal.aborted) {
-            const items = Array.isArray(data) ? data : data?.results || [];
-            setLiveResults(items);
-            setDidYouMean(suggestion || data?.didYouMean || null);
-            setLoading(false);
-          }
+        .catch(() => ({ items: [], suggestion: null }));
+
+      const animeReq =
+        query.length >= 2
+          ? fetch(`/api/anilist/search?q=${encodeURIComponent(query)}&limit=4`, {
+              signal: controller.signal,
+            })
+              .then((r) => (r.ok ? r.json() : []))
+              .catch(() => [])
+          : Promise.resolve([]);
+
+      const peopleReq =
+        query.length >= 2
+          ? fetch(`/api/tmdb/search?q=${encodeURIComponent(query)}&type=person&limit=4`, {
+              signal: controller.signal,
+            })
+              .then((r) => (r.ok ? r.json() : []))
+              .catch(() => [])
+          : Promise.resolve([]);
+
+      Promise.all([tmdbReq, animeReq, peopleReq])
+        .then(([tmdbRes, animeData, peopleData]) => {
+          if (!activeReq || controller.signal.aborted) return;
+          const cleanTmdb = Array.isArray(tmdbRes.items)
+            ? tmdbRes.items.filter((item) => item.type !== "anime")
+            : [];
+          const cleanAnime = Array.isArray(animeData) ? animeData : [];
+          setLiveResults([...cleanTmdb, ...cleanAnime]);
+          setPeopleResults(Array.isArray(peopleData) ? peopleData : []);
+          setDidYouMean(tmdbRes.suggestion || null);
+          setLoading(false);
         })
         .catch((err) => {
-          if (err.name !== "AbortError" && active) {
+          if (err.name !== "AbortError" && activeReq) {
             setLoading(false);
           }
         });
     }, 200);
 
     return () => {
-      active = false;
+      activeReq = false;
       clearTimeout(timer);
       controller.abort();
     };
   }, [q]);
 
-  const results = useMemo(() => {
-    if (!q.trim()) return [];
-    return liveResults.slice(0, 8);
-  }, [q, liveResults]);
+  const recents = useMemo(() => (searches || []).slice(0, 5), [searches]);
 
-  const recents = searches.slice(0, 10);
-
-  // Flat list of rows: search results, or recent searches, or trending suggestions
-  const rows = useMemo(() => {
-    if (q.trim()) return results.map((t) => ({ kind: "title", t }));
-    if (recents.length > 0) return recents.map((text) => ({ kind: "recent", text }));
-    return trending.map((t) => ({ kind: "title", t }));
-  }, [q, results, recents, trending]);
+  const { sections, flatRows: rows } = useMemo(
+    () =>
+      buildGroupedSearchSections({
+        query: q,
+        results: liveResults,
+        people: peopleResults,
+        recents,
+        trending,
+        maxPerGroup: 4,
+      }),
+    [q, liveResults, peopleResults, recents, trending]
+  );
 
   useEffect(() => {
     setActive(-1);
@@ -108,7 +135,10 @@ export default function SearchPalette({ autoFocus = false, wide = false }) {
 
   useEffect(() => {
     if (autoFocus) {
-      setTimeout(() => input.current?.focus(), 0);
+      setTimeout(() => {
+        input.current?.focus();
+        setOpen(true);
+      }, 0);
     }
   }, [autoFocus]);
 
@@ -119,13 +149,18 @@ export default function SearchPalette({ autoFocus = false, wide = false }) {
     const onKey = (e) => {
       const typing = /input|textarea/i.test(document.activeElement?.tagName || "");
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        input.current?.focus();
-        setOpen(true);
+        // Only hijack focus when this search input is visible in the layout
+        if (input.current && input.current.offsetParent !== null) {
+          e.preventDefault();
+          input.current.focus();
+          setOpen(true);
+        }
       } else if (e.key === "/" && !typing) {
-        e.preventDefault();
-        input.current?.focus();
-        setOpen(true);
+        if (input.current && input.current.offsetParent !== null) {
+          e.preventDefault();
+          input.current.focus();
+          setOpen(true);
+        }
       }
     };
     document.addEventListener("pointerdown", onDown);
@@ -137,18 +172,24 @@ export default function SearchPalette({ autoFocus = false, wide = false }) {
   }, []);
 
   const remember = (text) => {
-    const v = text.trim();
+    const v = String(text || "").trim();
     if (!v) return;
-    setSearches((s) => [v, ...s.filter((x) => x.toLowerCase() !== v.toLowerCase())].slice(0, 10));
+    setSearches((s) => [v, ...(s || []).filter((x) => x.toLowerCase() !== v.toLowerCase())].slice(0, 10));
   };
 
   const go = (row) => {
     setOpen(false);
     input.current?.blur();
+    onNavigate?.();
     if (row.kind === "title") {
       remember(row.t.title);
       setQ("");
       router.push(`/title/${row.t.id}`);
+    } else if (row.kind === "person") {
+      const personName = row.t.name || row.t.title || "";
+      remember(personName);
+      setQ(personName);
+      router.push(`/search?q=${encodeURIComponent(personName)}&tab=people`);
     } else {
       setQ(row.text);
       router.push(`/search?q=${encodeURIComponent(row.text)}`);
@@ -161,6 +202,7 @@ export default function SearchPalette({ autoFocus = false, wide = false }) {
     remember(q);
     setOpen(false);
     input.current?.blur();
+    onNavigate?.();
     router.push(`/search?q=${encodeURIComponent(q.trim())}`);
   };
 
@@ -168,10 +210,10 @@ export default function SearchPalette({ autoFocus = false, wide = false }) {
     if (e.key === "ArrowDown") {
       e.preventDefault();
       setOpen(true);
-      setActive((a) => (a + 1) % Math.max(rows.length, 1));
+      setActive((a) => (rows.length ? (a + 1) % rows.length : -1));
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
-      setActive((a) => (a <= 0 ? rows.length - 1 : a - 1));
+      setActive((a) => (rows.length ? (a <= 0 ? rows.length - 1 : a - 1) : -1));
     } else if (e.key === "Enter") {
       e.preventDefault();
       submit();
@@ -186,10 +228,10 @@ export default function SearchPalette({ autoFocus = false, wide = false }) {
       <div className={styles.dockField} onClick={() => input.current?.focus()}>
         <input
           ref={input}
-          id="site-search"
+          id={wide ? "spotlight-search" : "site-search"}
           className={styles.input}
           type="search"
-          placeholder="Search"
+          placeholder="Search movies, series, anime, people…"
           value={q}
           autoComplete="off"
           autoCorrect="off"
@@ -201,7 +243,7 @@ export default function SearchPalette({ autoFocus = false, wide = false }) {
           data-form-type="other"
           role="combobox"
           aria-expanded={open}
-          aria-controls="search-listbox"
+          aria-controls={wide ? "spotlight-search-listbox" : "search-listbox"}
           aria-activedescendant={active >= 0 ? `sr-${active}` : undefined}
           aria-label="Search"
           onFocus={() => setOpen(true)}
@@ -244,82 +286,102 @@ export default function SearchPalette({ autoFocus = false, wide = false }) {
       </div>
 
       {open && (
-        <div className={styles.drop} id="search-listbox" role="listbox">
+        <div
+          className={styles.drop}
+          id={wide ? "spotlight-search-listbox" : "search-listbox"}
+          role="listbox"
+        >
           {didYouMean && (
-            <div
-              style={{
-                padding: "8px 16px",
-                fontSize: 12,
-                color: "rgba(255, 255, 255, 0.7)",
-                borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
-                background: "rgba(220, 38, 38, 0.08)",
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-              }}
-            >
+            <div className={styles.didYouMean}>
               <span>Showing results for</span>
               <button
                 type="button"
-                style={{
-                  background: "transparent",
-                  border: 0,
-                  padding: 0,
-                  color: "#f87171",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  textDecoration: "underline",
-                  font: "inherit",
-                }}
+                className={styles.didYouMeanBtn}
                 onClick={() => setQ(didYouMean)}
               >
                 {didYouMean}
               </button>
             </div>
           )}
+
           {loading && rows.length === 0 ? (
-            <p className={styles.none}>Searching...</p>
+            <p className={styles.none}>Searching…</p>
           ) : rows.length === 0 && q.trim() ? (
             <p className={styles.none}>No titles match “{q.trim()}”. Try a genre or a year.</p>
           ) : (
-            <ul className={styles.list}>
-              {rows.map((row, i) => (
-                <li key={row.kind + (row.t?.id || row.text)} id={`sr-${i}`} role="option" aria-selected={i === active}>
-                  <button
-                    type="button"
-                    className={`${styles.row} ${i === active ? styles.rowOn : ""}`}
-                    onMouseEnter={() => setActive(i)}
-                    onClick={() => go(row)}
-                  >
-                    {row.kind === "recent" ? (
-                      <>
-                        <span className={styles.lead}>
-                          <Clock size={16} />
-                        </span>
-                        <span className={styles.label}>{row.text}</span>
-                      </>
-                    ) : (
-                      <div className={styles.resultItem}>
-                        <span className={styles.lead}>
-                          <Search size={16} strokeWidth={2} />
-                        </span>
-                        <div className={styles.resultContent}>
-                          <span className={styles.resultTitle}>{row.t.title}</span>
-                          <span className={styles.resultMeta}>
-                            {row.t.year ? `${row.t.year} ` : ""}
-                            {TYPE_LABEL[row.t.type] || (row.t.type === "tv" ? "Series" : "Movie")}
-                          </span>
-                        </div>
-                        <div className={styles.resultPoster}>
-                          <Art title={row.t} variant="poster" showTitle={false} />
-                        </div>
-                      </div>
-                    )}
-                  </button>
-                </li>
+            <div className={styles.sectionsScroll}>
+              {sections.map((section) => (
+                  <div key={section.id} className={styles.section}>
+                    <div className={styles.sectionHeader}>{section.label}</div>
+                    <ul className={styles.list}>
+                      {section.items.map((row) => {
+                        const globalIdx = row.flatIndex;
+                        const isSelected = globalIdx === active;
+                        return (
+                          <li
+                            key={row.key}
+                            id={`sr-${globalIdx}`}
+                            role="option"
+                            aria-selected={isSelected}
+                          >
+                            <button
+                              type="button"
+                              className={`${styles.row} ${isSelected ? styles.rowOn : ""}`}
+                              onMouseEnter={() => setActive(globalIdx)}
+                              onClick={() => go(row)}
+                            >
+                              {row.kind === "recent" ? (
+                                <>
+                                  <span className={styles.lead}>
+                                    <Clock size={16} />
+                                  </span>
+                                  <span className={styles.label}>{row.text}</span>
+                                </>
+                              ) : row.kind === "person" ? (
+                                <div className={styles.resultItem}>
+                                  <span className={styles.lead}>
+                                    <User size={16} strokeWidth={2} />
+                                  </span>
+                                  <div className={styles.resultContent}>
+                                    <span className={styles.resultTitle}>{row.t.name || row.t.title}</span>
+                                    <span className={styles.resultMeta}>
+                                      {row.t.department || "Person"}
+                                    </span>
+                                  </div>
+                                  {row.t.profile && (
+                                    <div className={styles.resultAvatar}>
+                                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                                      <img src={row.t.profile} alt="" loading="lazy" />
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className={styles.resultItem}>
+                                  <span className={styles.lead}>
+                                    <Search size={16} strokeWidth={2} />
+                                  </span>
+                                  <div className={styles.resultContent}>
+                                    <span className={styles.resultTitle}>{row.t.title}</span>
+                                    <span className={styles.resultMeta}>
+                                      {row.t.year ? `${row.t.year} · ` : ""}
+                                      {TYPE_LABEL[row.t.type] || (row.t.type === "tv" ? "Series" : "Movie")}
+                                    </span>
+                                  </div>
+                                  <div className={styles.resultPoster}>
+                                    <Art title={row.t} variant="poster" showTitle={false} />
+                                  </div>
+                                </div>
+                              )}
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
               ))}
-            </ul>
+            </div>
           )}
+
           {!q.trim() && recents.length > 0 && (
             <button type="button" className={styles.clear} onClick={() => setSearches([])}>
               Clear search history

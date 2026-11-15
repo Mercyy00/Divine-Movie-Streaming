@@ -89,7 +89,7 @@ export default function SettingsPage() {
   const [, setWatchlist] = useList();
 
   // Active Tab: "account" | "integrations" | "player" | "appearance" | "content" | "about"
-  const { status: authStatus } = useSession();
+  const { data: session, status: authStatus } = useSession();
   const exportData = () => {
     if (authStatus === "authenticated") { window.location.href = "/api/user/export"; return; }
     const out = {};
@@ -146,6 +146,8 @@ export default function SettingsPage() {
   // Dropdown states
   const [openAudioMenu, setOpenAudioMenu] = useState(false);
   const [openRegionMenu, setOpenRegionMenu] = useState(false);
+  const audioMenuRef = useRef(null);
+  const regionMenuRef = useRef(null);
 
   // Modals / Dialogs
   const [dialogMode, setDialogMode] = useState(null); // "email" | "password" | "clear-history" | "clear-watchlist" | "reset-all" | "signout-all" | "delete-account"
@@ -182,11 +184,29 @@ export default function SettingsPage() {
     }
   }
 
-  // ESC key closes modal / navigates back
+  // Close open dropdowns on outside pointerdown
+  useEffect(() => {
+    if (!openAudioMenu && !openRegionMenu) return;
+    const handlePointerDown = (e) => {
+      if (openAudioMenu && audioMenuRef.current && !audioMenuRef.current.contains(e.target)) {
+        setOpenAudioMenu(false);
+      }
+      if (openRegionMenu && regionMenuRef.current && !regionMenuRef.current.contains(e.target)) {
+        setOpenRegionMenu(false);
+      }
+    };
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [openAudioMenu, openRegionMenu]);
+
+  // ESC key closes open menus/modal or navigates back
   useEffect(() => {
     const handleKey = (e) => {
       if (e.key === "Escape") {
-        if (dialogMode) {
+        if (openAudioMenu || openRegionMenu) {
+          setOpenAudioMenu(false);
+          setOpenRegionMenu(false);
+        } else if (dialogMode) {
           setDialogMode(null);
         } else {
           handleClose();
@@ -195,14 +215,19 @@ export default function SettingsPage() {
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [dialogMode]);
+  }, [dialogMode, openAudioMenu, openRegionMenu]);
 
   // Helper to toggle boolean settings
   const toggleSetting = (key) => {
-    setSettings((prev) => {
-      const next = !Boolean(prev?.[key]);
-      return { ...(prev || {}), [key]: next };
-    });
+    const nextVal = !Boolean(settings?.[key]);
+    setSettings((prev) => ({ ...(prev || {}), [key]: nextVal }));
+    if (key === "publicProfile" && authStatus === "authenticated") {
+      fetch("/api/user/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isPublic: nextVal }),
+      }).catch(() => {});
+    }
   };
 
   // Profile Save
@@ -609,62 +634,65 @@ export default function SettingsPage() {
                 <section className={styles.section}>
                   <h2 className={styles.sectionTitle}>Sign-in</h2>
 
-                  {matchesSearch("Email") && (
-                    <div className={styles.settingRow}>
-                      <span className={styles.settingLabel}>Email</span>
-                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                        <span className={styles.settingSub}>
-                          {settings.email || "guest@divine.internal"}
-                        </span>
-                        <button
-                          type="button"
-                          className={styles.pillActionBtn}
-                          onClick={() => {
-                            setDialogMode("email");
-                            setDialogInput(settings.email || "guest@divine.internal");
-                          }}
-                        >
-                          Change
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                  {authStatus === "authenticated" ? (
+                    <>
+                      {matchesSearch("Email") && (
+                        <div className={styles.settingRow}>
+                          <span className={styles.settingLabel}>Email</span>
+                          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                            <span className={styles.settingSub}>
+                              {session?.user?.email || settings.email}
+                            </span>
+                            <button
+                              type="button"
+                              className={styles.pillActionBtn}
+                              onClick={() => {
+                                setDialogMode("email");
+                                setDialogInput(session?.user?.email || settings.email || "");
+                              }}
+                            >
+                              Change
+                            </button>
+                          </div>
+                        </div>
+                      )}
 
-                  {matchesSearch("Password") && (
+                      {matchesSearch("Password") && (
+                        <div className={styles.settingRow}>
+                          <span className={styles.settingLabel}>Password</span>
+                          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                            <span className={styles.settingSub}>
+                              {settings.passwordSet ? "Configured" : "Change or set password"}
+                            </span>
+                            <button
+                              type="button"
+                              className={styles.pillActionBtn}
+                              onClick={() => {
+                                setDialogMode("password");
+                                setDialogInput("");
+                              }}
+                            >
+                              {settings.passwordSet ? "Change" : "Set"}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  ) : (
                     <div className={styles.settingRow}>
-                      <span className={styles.settingLabel}>Password</span>
-                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <div className={styles.settingLeft}>
+                        <span className={styles.settingLabel}>Cloud sync &amp; account</span>
                         <span className={styles.settingSub}>
-                          {settings.passwordSet ? "••••••••" : "Not set"}
+                          Currently using guest storage on this device. Sign in to sync progress, lists, and credentials.
                         </span>
-                        <button
-                          type="button"
-                          className={styles.pillActionBtn}
-                          onClick={() => {
-                            setDialogMode("password");
-                            setDialogInput("");
-                          }}
-                        >
-                          {settings.passwordSet ? "Change" : "Set"}
-                        </button>
                       </div>
-                    </div>
-                  )}
-
-                  {matchesSearch("Google") && (
-                    <div className={styles.settingRow}>
-                      <span className={styles.settingLabel}>Google</span>
-                      <button
-                        type="button"
-                        className={`${styles.pillActionBtn} ${styles.unlinkBtn}`}
-                        onClick={() => {
-                          const next = !Boolean(settings.googleLinked);
-                          setSettings((s) => ({ ...s, googleLinked: next }));
-                          showToast(next ? "Google account linked" : "Google account unlinked");
-                        }}
+                      <Link
+                        href="/auth/signin"
+                        className={styles.pillActionBtn}
+                        style={{ display: "inline-flex", alignItems: "center", textDecoration: "none" }}
                       >
-                        {settings.googleLinked !== false ? "Unlink" : "Link"}
-                      </button>
+                        Sign in
+                      </Link>
                     </div>
                   )}
                 </section>
@@ -683,17 +711,19 @@ export default function SettingsPage() {
                     </div>
                   </div>
 
-                  <div className={styles.settingRow}>
-                    <span className={styles.settingLabel}>Sign out of all devices</span>
-                    <button
-                      type="button"
-                      className={styles.deviceIconBtn}
-                      onClick={() => setDialogMode("signout-all")}
-                      aria-label="Sign out of all devices"
-                    >
-                      <Laptop size={18} />
-                    </button>
-                  </div>
+                  {authStatus === "authenticated" && (
+                    <div className={styles.settingRow}>
+                      <span className={styles.settingLabel}>Sign out of all devices</span>
+                      <button
+                        type="button"
+                        className={styles.deviceIconBtn}
+                        onClick={() => setDialogMode("signout-all")}
+                        aria-label="Sign out of all devices"
+                      >
+                        <Laptop size={18} />
+                      </button>
+                    </div>
+                  )}
                 </section>
               </>
             )}
@@ -704,46 +734,26 @@ export default function SettingsPage() {
                 {/* Section: Tracking */}
                 <section className={styles.section}>
                   <h2 className={styles.sectionTitle}>Tracking</h2>
+                  <p className={styles.settingSub} style={{ margin: "-6px 0 14px", lineHeight: 1.5 }}>
+                    Third-party scrobbler OAuth integrations are not enabled in this deployment. Your watch history and custom lists stay synced to your DIVINE account when signed in.
+                  </p>
 
-                  <div className={styles.settingRow}>
-                    <span className={styles.settingLabel}>Simkl</span>
-                    <button
-                      type="button"
-                      className={styles.pillActionBtn}
-                      onClick={() => {
-                        const next = !Boolean(settings.simklConnected);
-                        setSettings((s) => ({ ...s, simklConnected: next }));
-                        showToast(next ? "Connected to Simkl" : "Disconnected from Simkl");
-                      }}
-                    >
-                      {settings.simklConnected ? "Disconnect" : "Connect"}
-                    </button>
-                  </div>
-
-                  <div className={styles.settingRow}>
-                    <span className={styles.settingLabel}>Trakt</span>
-                    <span className={styles.unavailableLabel}>Unavailable</span>
-                  </div>
-
-                  <div className={styles.settingRow}>
-                    <span className={styles.settingLabel}>AniList</span>
-                    <button
-                      type="button"
-                      className={styles.pillActionBtn}
-                      onClick={() => {
-                        const next = !Boolean(settings.anilistConnected);
-                        setSettings((s) => ({ ...s, anilistConnected: next }));
-                        showToast(next ? "Connected to AniList" : "Disconnected from AniList");
-                      }}
-                    >
-                      {settings.anilistConnected ? "Disconnect" : "Connect"}
-                    </button>
-                  </div>
-
-                  <div className={styles.settingRow}>
-                    <span className={styles.settingLabel}>MyAnimeList</span>
-                    <span className={styles.unavailableLabel}>Unavailable</span>
-                  </div>
+                  {[
+                    { name: "Simkl" },
+                    { name: "Trakt" },
+                    { name: "AniList" },
+                    { name: "MyAnimeList" },
+                  ].map((tracker) => (
+                    <div key={tracker.name} className={styles.settingRow}>
+                      <span className={styles.settingLabel}>{tracker.name}</span>
+                      <span
+                        className={styles.unavailableLabel}
+                        title={`${tracker.name} OAuth integration is not configured`}
+                      >
+                        Unavailable
+                      </span>
+                    </div>
+                  ))}
                 </section>
               </>
             )}
@@ -784,10 +794,12 @@ export default function SettingsPage() {
                   {matchesSearch("Preferred audio language") && (
                     <div className={styles.settingRow} style={{ position: "relative" }}>
                       <span className={styles.settingLabel}>Preferred audio language</span>
-                      <div style={{ position: "relative" }}>
+                      <div ref={audioMenuRef} style={{ position: "relative" }}>
                         <button
                           type="button"
                           className={styles.dropdownSelectBtn}
+                          aria-haspopup="listbox"
+                          aria-expanded={openAudioMenu}
                           onClick={() => setOpenAudioMenu((o) => !o)}
                         >
                           <span>{settings.preferredAudio || "Original"}</span>
@@ -795,11 +807,13 @@ export default function SettingsPage() {
                         </button>
 
                         {openAudioMenu && (
-                          <div className={styles.dropdownMenu}>
+                          <div className={styles.dropdownMenu} role="listbox" aria-label="Preferred audio language">
                             {LANGUAGES.map((lang) => (
                               <button
                                 key={lang}
                                 type="button"
+                                role="option"
+                                aria-selected={(settings.preferredAudio || "Original") === lang}
                                 className={`${styles.dropdownItem} ${
                                   (settings.preferredAudio || "Original") === lang
                                     ? styles.dropdownItemActive
@@ -857,6 +871,7 @@ export default function SettingsPage() {
                         type="button"
                         role="switch"
                         aria-checked={settings.autoplayNext !== false}
+                        aria-label="Autoplay next episode"
                         className={`${styles.toggleSwitch} ${
                           settings.autoplayNext !== false ? styles.toggleSwitchOn : ""
                         }`}
@@ -1374,10 +1389,12 @@ export default function SettingsPage() {
                   {matchesSearch("Region") && (
                     <div className={styles.settingRow} style={{ position: "relative" }}>
                       <span className={styles.settingLabel}>Region</span>
-                      <div style={{ position: "relative" }}>
+                      <div ref={regionMenuRef} style={{ position: "relative" }}>
                         <button
                           type="button"
                           className={styles.dropdownSelectBtn}
+                          aria-haspopup="listbox"
+                          aria-expanded={openRegionMenu}
                           onClick={() => setOpenRegionMenu((o) => !o)}
                         >
                           <span>{settings.region || "United States"}</span>
@@ -1385,11 +1402,13 @@ export default function SettingsPage() {
                         </button>
 
                         {openRegionMenu && (
-                          <div className={styles.dropdownMenu}>
+                          <div className={styles.dropdownMenu} role="listbox" aria-label="Region">
                             {REGIONS.map((reg) => (
                               <button
                                 key={reg}
                                 type="button"
+                                role="option"
+                                aria-selected={(settings.region || "United States") === reg}
                                 className={`${styles.dropdownItem} ${
                                   (settings.region || "United States") === reg
                                     ? styles.dropdownItemActive
@@ -1459,6 +1478,7 @@ export default function SettingsPage() {
                         type="button"
                         role="switch"
                         aria-checked={Boolean(settings.hideSpoilers)}
+                        aria-label="Hide spoilers"
                         className={`${styles.toggleSwitch} ${
                           settings.hideSpoilers ? styles.toggleSwitchOn : ""
                         }`}
@@ -1481,6 +1501,7 @@ export default function SettingsPage() {
                         type="button"
                         role="switch"
                         aria-checked={Boolean(settings.incognito)}
+                        aria-label="Incognito"
                         className={`${styles.toggleSwitch} ${
                           settings.incognito ? styles.toggleSwitchOn : ""
                         }`}
@@ -1562,7 +1583,9 @@ export default function SettingsPage() {
 
                   <div className={styles.settingRow}>
                     <span className={styles.settingLabel}>Data Provider</span>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src="/brands/tmdb.svg" alt="TMDB" style={{ height: 12, width: "auto", opacity: 0.85 }} />
                       <CheckCircle2 size={15} color="#4ade80" />
                       <span className={styles.settingSub} style={{ color: "#4ade80" }}>
                         The Movie Database (Connected)
@@ -1596,12 +1619,23 @@ export default function SettingsPage() {
 
                   <div className={styles.settingRow}>
                     <span className={styles.settingLabel}>Terms of Service</span>
-                    <span className={styles.settingSub}>Updated November 2026</span>
+                    <Link href="/terms" className={styles.pillActionBtn} style={{ display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
+                      Read
+                    </Link>
                   </div>
 
                   <div className={styles.settingRow}>
                     <span className={styles.settingLabel}>Privacy Policy</span>
-                    <span className={styles.settingSub}>Strict zero-telemetry</span>
+                    <Link href="/privacy" className={styles.pillActionBtn} style={{ display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
+                      Read
+                    </Link>
+                  </div>
+
+                  <div className={styles.settingRow}>
+                    <span className={styles.settingLabel}>DMCA Policy</span>
+                    <Link href="/dmca" className={styles.pillActionBtn} style={{ display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
+                      Read
+                    </Link>
                   </div>
                 </section>
               </>
@@ -1612,8 +1646,14 @@ export default function SettingsPage() {
         {/* Mini Confirmation Dialog */}
         {dialogMode && (
           <div className={styles.miniDialogBackdrop} onClick={() => setDialogMode(null)}>
-            <div className={styles.miniDialogBox} onClick={(e) => e.stopPropagation()}>
-              <h3 className={styles.miniDialogTitle}>
+            <div
+              className={styles.miniDialogBox}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="settings-dialog-title"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 id="settings-dialog-title" className={styles.miniDialogTitle}>
                 {dialogMode === "email" && "Change Email Address"}
                 {dialogMode === "password" && "Set Account Password"}
                 {dialogMode === "clear-history" && "Clear Watch History?"}

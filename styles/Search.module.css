@@ -96,6 +96,38 @@
   border-color: #fff !important;
 }
 
+.didYouMeanBanner {
+  margin: 0 0 22px;
+  padding: 12px 18px;
+  border-radius: var(--radius-card, 16px);
+  background: var(--g-fill);
+  backdrop-filter: var(--g-blur);
+  -webkit-backdrop-filter: var(--g-blur);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: var(--g-edge);
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.didYouMeanBtn {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  color: #ffffff;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  font-size: 14px;
+}
+
+.didYouMeanBtn:hover {
+  color: rgba(255, 255, 255, 0.9);
+}
+
 /* Results Horizontal List */
 .resultsList {
   display: flex;

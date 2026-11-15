@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import { prisma } from "../../../lib/prisma";
 import { applyApiGuard } from "../../../lib/api-guard";
+import { hashResetToken } from "../../../lib/tokenHash";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -27,6 +28,7 @@ export default async function handler(req, res) {
     }
 
     const token = crypto.randomBytes(32).toString("hex");
+    const tokenHash = hashResetToken(token);
     const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
     // Delete any existing reset token for this email
@@ -37,7 +39,7 @@ export default async function handler(req, res) {
     await prisma.verificationToken.create({
       data: {
         identifier: `reset:${email}`,
-        token,
+        token: tokenHash,
         expires,
       },
     });
@@ -45,7 +47,7 @@ export default async function handler(req, res) {
     const siteUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
     const resetUrl = `${siteUrl}/auth/reset?token=${token}&email=${encodeURIComponent(email)}`;
 
-    // Optional email sending via Resend or log
+    // Optional email sending via Resend; never log reset URLs or tokens
     if (process.env.RESEND_API_KEY) {
       try {
         await fetch("https://api.resend.com/emails", {
@@ -62,10 +64,10 @@ export default async function handler(req, res) {
           }),
         });
       } catch (err) {
-        console.error("Failed to send reset email via Resend:", err);
+        console.error("Failed to send reset email via Resend:", err?.message || "Unknown error");
       }
-    } else {
-      console.log(`[DIVINE Auth] Password reset link for ${email}: ${resetUrl}`);
+    } else if (process.env.NODE_ENV !== "production") {
+      console.warn("[DIVINE Auth] RESEND_API_KEY not configured; password reset email not dispatched.");
     }
 
     return res.status(200).json({ ok: true, message: "If an account with that email exists, password reset instructions have been sent." });

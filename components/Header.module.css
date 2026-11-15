@@ -589,21 +589,33 @@
   margin: 10px 4px 6px;
 }
 
+.notifRow {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border-radius: 14px;
+  transition: background 0.15s ease;
+}
+
+.notifRow:hover,
+.notifRow:focus-within {
+  background: rgba(255, 255, 255, 0.06);
+}
+
 .notifItem {
   position: relative;
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 10px 10px;
+  width: 100%;
+  padding: 10px 38px 10px 10px;
   border-radius: 14px;
   background: transparent;
   border: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
   cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.notifItem:hover {
-  background: rgba(255, 255, 255, 0.06);
 }
 
 .notifItemUnread {
@@ -693,8 +705,8 @@
   right: 8px;
   top: 50%;
   transform: translateY(-50%);
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.12);
   border: none;
@@ -705,8 +717,15 @@
   transition: all 0.15s ease;
 }
 
-.notifItem:hover .dismissNotifBtn {
+.notifRow:hover .dismissNotifBtn,
+.notifRow:focus-within .dismissNotifBtn {
   display: grid;
+}
+
+@media (hover: none) {
+  .dismissNotifBtn {
+    display: grid;
+  }
 }
 
 .dismissNotifBtn:hover {
@@ -774,15 +793,21 @@
   }
 
   .round {
-    width: 38px;
-    height: 38px;
-    min-width: 38px;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+  }
+
+  .avatarBtn {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
   }
 
   .avatar,
   .avatarWrap {
-    width: 38px !important;
-    height: 38px !important;
+    width: 40px !important;
+    height: 40px !important;
   }
 
   .tabbar {
@@ -897,6 +922,12 @@
   min-width: 0;
   flex: 1;
   cursor: pointer;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  text-align: left;
+  font: inherit;
+  color: inherit;
 }
 
 .airingToastHead {

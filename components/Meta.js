@@ -2,14 +2,15 @@ import { certVar } from "../lib/constants";
 import styles from "./Meta.module.css";
 
 export function RatingRing({ value, size = 38 }) {
-  if (!value) return null;
+  const num = Number(value);
+  if (!Number.isFinite(num) || num <= 0) return null;
   const strokeWidth = size > 45 ? 3 : 2.5;
   const r = size / 2 - strokeWidth;
   const c = 2 * Math.PI * r;
-  const pct = Math.min(1, value / 10);
-  const color = value >= 7 ? "var(--ok)" : value >= 5 ? "var(--warn)" : "var(--danger)";
+  const pct = Math.min(1, num / 10);
+  const color = num >= 7 ? "var(--ok)" : num >= 5 ? "var(--warn)" : "var(--danger)";
   return (
-    <span className={styles.ring} style={{ width: size, height: size }} aria-label={`Rating ${value} out of 10`}>
+    <span className={styles.ring} style={{ width: size, height: size }} aria-label={`Rating ${num.toFixed(1)} out of 10`}>
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth={strokeWidth} />
         <circle
@@ -24,19 +25,21 @@ export function RatingRing({ value, size = 38 }) {
           transform={`rotate(-90 ${size / 2} ${size / 2})`}
         />
       </svg>
-      <b style={{ fontSize: size <= 42 ? 13 : size * 0.27 }}>{Number(value).toFixed(1)}</b>
+      <b style={{ fontSize: size <= 42 ? 13 : size * 0.27 }}>{num.toFixed(1)}</b>
     </span>
   );
 }
 
 export function CertBadge({ cert, small }) {
-  const dark = String(cert) === "PG";
+  const clean = cert != null ? String(cert).trim() : "";
+  if (!clean) return null;
+  const dark = clean.toUpperCase() === "PG";
   return (
     <span
       className={`${styles.cert} ${small ? styles.certSmall : ""}`}
-      style={{ background: certVar(cert), color: dark ? "var(--cert-ink-dark)" : "var(--cert-ink)" }}
+      style={{ background: certVar(clean), color: dark ? "var(--cert-ink-dark)" : "var(--cert-ink)" }}
     >
-      {cert}
+      {clean}
     </span>
   );
 }

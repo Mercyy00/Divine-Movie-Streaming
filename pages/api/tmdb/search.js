@@ -1,9 +1,10 @@
 import { searchTMDB, searchPeopleTMDB } from "../../../lib/tmdb.js";
 import { searchAniList } from "../../../lib/anilist.js";
+import { searchTitles } from "../../../lib/data.js";
 import { applyApiGuard, clampInt, handleApiError } from "../../../lib/api-guard.js";
 
 export default async function handler(req, res) {
-  if (!applyApiGuard(req, res, { cacheSeconds: 0 })) {
+  if (!(await applyApiGuard(req, res, { cacheSeconds: 0 }))) {
     return;
   }
 
@@ -24,6 +25,10 @@ export default async function handler(req, res) {
     if (type === "person" || type === "people") {
       const people = await searchPeopleTMDB(query, validLimit);
       return res.status(200).json(people || []);
+    }
+
+    if (!process.env.TMDB_API_KEY) {
+      return res.status(200).json(searchTitles(query, validLimit));
     }
 
     const liveResults = await searchTMDB(query, validLimit);

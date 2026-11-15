@@ -28,8 +28,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  opacity: 0;
-  transition: opacity 0.2s ease;
+  opacity: 0.78;
+  transition: opacity 0.2s var(--ease-out, ease);
 }
 
 .section:hover .arrows,
@@ -42,23 +42,25 @@
   height: 34px;
   display: grid;
   place-items: center;
-  border-radius: 999px;
-  background: var(--bar-glass, rgba(20, 20, 20, 0.7));
-  backdrop-filter: var(--bar-blur, blur(16px));
-  -webkit-backdrop-filter: var(--bar-blur, blur(16px));
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--pager-arrow-radius, 999px);
+  background: var(--g-fill);
+  backdrop-filter: var(--g-blur);
+  -webkit-backdrop-filter: var(--g-blur);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: var(--g-edge);
   color: #ffffff;
   cursor: pointer;
-  transition: background 0.2s ease, opacity 0.2s ease, transform 0.2s ease;
+  transition: background 0.2s ease, opacity 0.2s ease, transform 0.2s var(--ease-out, ease);
 }
 
 .arrowBtn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--g-fill-hover);
+  border-color: rgba(255, 255, 255, 0.28);
   transform: scale(1.05);
 }
 
 .arrowBtn:disabled {
-  opacity: 0.25;
+  opacity: 0.28;
   cursor: default;
 }
 

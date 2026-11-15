@@ -1,6 +1,5 @@
-import { useMemo, useState, useEffect, useRef } from "react";
+import { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/router";
-import Link from "next/link";
 import Layout from "../components/Layout";
 import HeroBanner from "../components/HeroBanner";
 import MediaRow from "../components/MediaRow";
@@ -9,7 +8,13 @@ import { CatalogFilterBar, TitleGrid, Empty, Chips } from "../components/Page";
 import { SkeletonHero, SkeletonGrid, SkeletonRow } from "../components/Skeleton";
 import { BRAND } from "../lib/constants";
 import { fetchAniListDiscover } from "../lib/anilist";
-import styles from "../styles/Anime.module.css";
+import {
+  seededShuffle,
+  mergeUniqueMediaPage,
+  parseBrowseQuery,
+  buildBrowseQuery,
+  countActiveFilters,
+} from "../lib/catalogHelpers";
 
 export async function getStaticProps() {
   try {
@@ -39,6 +44,24 @@ const CATEGORIES = [
   { value: "top", label: "Top Rated" },
   { value: "simulcasts", label: "Simulcasts" },
 ];
+
+const VALID_CATEGORIES = CATEGORIES.map((c) => c.value);
+const FILTER_KEYS = ["genre", "year", "rating"];
+
+const DEFAULT_FILTERS = {
+  genre: "all",
+  year: "all",
+  rating: "all",
+};
+
+const EXTRA_DEFAULTS = {
+  studio: "all",
+  subgenre: "all",
+};
+
+const EXTRA_ALIASES = {
+  subgenre: ["keywords"],
+};
 
 const ANIME_STUDIOS = [
   { value: "all", label: "All Studios" },
@@ -81,16 +104,23 @@ const YEARS = ["2026", "2025", "2024", "2023", "2022", "2010s", "Earlier"];
 export default function Anime({ initialHero = [], initialTrending = [], initialTop = [] }) {
   const router = useRouter();
   const gridRef = useRef(null);
+  const infiniteTriggerRef = useRef(null);
+  const itemsRef = useRef([]);
+  const loadingMoreRef = useRef(false);
+  const pageAbortRef = useRef(null);
 
   const [category, setCategory] = useState("trending");
   const [studio, setStudio] = useState("all");
   const [subgenre, setSubgenre] = useState("all");
-  const [filters, setFilters] = useState({
-    genre: "all",
-    year: "all",
-    rating: "all",
-  });
+  const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [shuffleSeed, setShuffleSeed] = useState(0);
+  const [retryCount, setRetryCount] = useState(0);
+  const [isOffline, setIsOffline] = useState(false);
+
+  // Pagination & Infinite Scroll
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   // Dynamic AniList state
   const [heroItems, setHeroItems] = useState(initialHero);
@@ -104,64 +134,78 @@ export default function Anime({ initialHero = [], initialTrending = [], initialT
 
   const [animeList, setAnimeList] = useState([]);
   const [animeLoading, setAnimeLoading] = useState(true);
+  const [animeError, setAnimeError] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const syncNetwork = () => setIsOffline(!window.navigator.onLine);
+    syncNetwork();
+    window.addEventListener("online", syncNetwork);
+    window.addEventListener("offline", syncNetwork);
+    return () => {
+      window.removeEventListener("online", syncNetwork);
+      window.removeEventListener("offline", syncNetwork);
+    };
+  }, []);
 
   // Sync state from URL query on initial load or back/forward navigation
   useEffect(() => {
     if (!router.isReady) return;
-    const q = router.query;
-    if (q.category && typeof q.category === "string") {
-      setCategory(q.category);
-    }
-    if (q.studio && typeof q.studio === "string") {
-      setStudio(q.studio);
-    }
-    if (q.subgenre && typeof q.subgenre === "string") {
-      setSubgenre(q.subgenre);
-    } else if (q.keywords && typeof q.keywords === "string") {
-      setSubgenre(q.keywords);
-    }
-    setFilters((prev) => ({
-      genre: typeof q.genre === "string" ? q.genre : prev.genre,
-      year: typeof q.year === "string" ? q.year : prev.year,
-      rating: typeof q.rating === "string" ? q.rating : prev.rating,
-    }));
+    const parsed = parseBrowseQuery(router.query, {
+      defaultCategory: "trending",
+      validCategories: VALID_CATEGORIES,
+      filterKeys: FILTER_KEYS,
+      extraDefaults: EXTRA_DEFAULTS,
+      extraAliases: EXTRA_ALIASES,
+    });
+    setCategory((prev) => (prev === parsed.category ? prev : parsed.category));
+    setStudio((prev) => (prev === parsed.extra.studio ? prev : parsed.extra.studio));
+    setSubgenre((prev) => (prev === parsed.extra.subgenre ? prev : parsed.extra.subgenre));
+    setFilters((prev) => {
+      const same = FILTER_KEYS.every((k) => prev[k] === parsed.filters[k]);
+      return same ? prev : parsed.filters;
+    });
   }, [router.isReady, router.query]);
 
-  // 1. Fetch featured hero banner anime & trending from AniList API if not preloaded
+  // 1. Fetch featured hero banner anime & trending from AniList API
   useEffect(() => {
     let active = true;
-    fetch("/api/anilist/discover?category=trending&limit=10")
+    const controller = new AbortController();
+    fetch("/api/anilist/discover?category=trending&perPage=10", { signal: controller.signal })
       .then((r) => (r.ok ? r.json() : []))
       .then((data) => {
-        if (active && Array.isArray(data) && data.length > 0) {
+        if (!active) return;
+        if (Array.isArray(data) && data.length > 0) {
           setHeroItems(data.slice(0, 5));
           setTrendingItems(data.slice(0, 10));
-          setHeroLoading(false);
-          setTrendingLoading(false);
         }
+        setHeroLoading(false);
+        setTrendingLoading(false);
       })
       .catch(() => {
-        if (active) {
-          setHeroLoading(false);
-          setTrendingLoading(false);
-        }
+        if (!active) return;
+        setHeroLoading(false);
+        setTrendingLoading(false);
       });
 
     return () => {
       active = false;
+      controller.abort();
     };
-  }, []);
+  }, [retryCount]);
 
-  // 2. Fetch Top rated anime from AniList API if not preloaded
+  // 2. Fetch Top rated anime from AniList API
   useEffect(() => {
     let active = true;
-    fetch("/api/anilist/discover?category=top&limit=10")
+    const controller = new AbortController();
+    fetch("/api/anilist/discover?category=top&perPage=10", { signal: controller.signal })
       .then((r) => (r.ok ? r.json() : []))
       .then((data) => {
-        if (active && Array.isArray(data) && data.length > 0) {
+        if (!active) return;
+        if (Array.isArray(data) && data.length > 0) {
           setTopItems(data.slice(0, 10));
-          setTopLoading(false);
         }
+        setTopLoading(false);
       })
       .catch(() => {
         if (active) setTopLoading(false);
@@ -169,46 +213,144 @@ export default function Anime({ initialHero = [], initialTrending = [], initialT
 
     return () => {
       active = false;
+      controller.abort();
     };
-  }, []);
+  }, [retryCount]);
 
-  // 3. Fetch catalog anime from AniList API based on category, studio, subgenre & filters
+  // 3. Fetch catalog anime (Page 1) after router isReady
   useEffect(() => {
+    if (!router.isReady) return;
+
     let active = true;
+    const controller = new AbortController();
+    pageAbortRef.current?.abort();
+    pageAbortRef.current = null;
+    loadingMoreRef.current = false;
+
     setAnimeLoading(true);
+    setAnimeError(false);
+    setLoadingMore(false);
+    setPage(1);
+    setHasMore(true);
 
     const params = new URLSearchParams({
       category,
       genre: filters.genre,
       year: filters.year,
       rating: filters.rating,
+      page: "1",
+      perPage: "24",
     });
-    if (studio && studio !== "all") {
-      params.set("studio", studio);
-    }
-    if (subgenre && subgenre !== "all") {
-      params.set("subgenre", subgenre);
-    }
+    if (studio && studio !== "all") params.set("studio", studio);
+    if (subgenre && subgenre !== "all") params.set("subgenre", subgenre);
 
-    fetch(`/api/anilist/discover?${params.toString()}`)
-      .then((r) => (r.ok ? r.json() : []))
+    fetch(`/api/anilist/discover?${params.toString()}`, { signal: controller.signal })
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
       .then((data) => {
-        if (active) {
-          setAnimeList(Array.isArray(data) ? data : []);
-          setAnimeLoading(false);
+        if (!active) return;
+        const arr = Array.isArray(data) ? data : [];
+        itemsRef.current = arr;
+        setAnimeList(arr);
+        setAnimeLoading(false);
+        setAnimeError(false);
+        if (arr.length < 18) {
+          setHasMore(false);
         }
       })
-      .catch(() => {
-        if (active) {
-          setAnimeList([]);
-          setAnimeLoading(false);
-        }
+      .catch((err) => {
+        if (!active || err?.name === "AbortError") return;
+        itemsRef.current = [];
+        setAnimeList([]);
+        setAnimeLoading(false);
+        setAnimeError(true);
+        setHasMore(false);
       });
 
     return () => {
       active = false;
+      controller.abort();
+      pageAbortRef.current?.abort();
     };
-  }, [category, studio, subgenre, filters]);
+  }, [router.isReady, category, studio, subgenre, filters, retryCount]);
+
+  // 4. Load next page for infinite scroll
+  const loadMore = useCallback(() => {
+    if (animeLoading || loadingMoreRef.current || !hasMore || page >= 50) return;
+
+    loadingMoreRef.current = true;
+    setLoadingMore(true);
+    const nextPage = page + 1;
+
+    const controller = new AbortController();
+    pageAbortRef.current?.abort();
+    pageAbortRef.current = controller;
+
+    const params = new URLSearchParams({
+      category,
+      genre: filters.genre,
+      year: filters.year,
+      rating: filters.rating,
+      page: String(nextPage),
+      perPage: "24",
+    });
+    if (studio && studio !== "all") params.set("studio", studio);
+    if (subgenre && subgenre !== "all") params.set("subgenre", subgenre);
+
+    fetch(`/api/anilist/discover?${params.toString()}`, { signal: controller.signal })
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then((data) => {
+        const newItems = Array.isArray(data) ? data : [];
+        if (newItems.length === 0) {
+          setHasMore(false);
+          loadingMoreRef.current = false;
+          setLoadingMore(false);
+          return;
+        }
+
+        const { items: merged, addedCount } = mergeUniqueMediaPage(itemsRef.current, newItems);
+        itemsRef.current = merged;
+        setAnimeList(merged);
+        setPage(nextPage);
+
+        if (nextPage >= 50 || newItems.length < 18 || addedCount === 0) {
+          setHasMore(false);
+        }
+        loadingMoreRef.current = false;
+        setLoadingMore(false);
+      })
+      .catch((err) => {
+        loadingMoreRef.current = false;
+        setLoadingMore(false);
+        if (err?.name !== "AbortError") {
+          setHasMore(false);
+        }
+      });
+  }, [animeLoading, hasMore, page, category, studio, subgenre, filters]);
+
+  // 5. Infinite scroll observer
+  useEffect(() => {
+    if (!hasMore || animeLoading || loadingMore) return;
+    const trigger = infiniteTriggerRef.current;
+    if (!trigger) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          loadMore();
+        }
+      },
+      { rootMargin: "250px" }
+    );
+
+    observer.observe(trigger);
+    return () => observer.disconnect();
+  }, [hasMore, animeLoading, loadingMore, loadMore]);
 
   const filterOptions = useMemo(() => {
     return {
@@ -221,49 +363,76 @@ export default function Anime({ initialHero = [], initialTrending = [], initialT
     };
   }, []);
 
-  const updateUrl = (newCat, newStudio, newSubgenre, newFilters) => {
-    const next = {};
-    if (newCat && newCat !== "trending") next.category = newCat;
-    if (newStudio && newStudio !== "all") next.studio = newStudio;
-    if (newSubgenre && newSubgenre !== "all") next.subgenre = newSubgenre;
-    for (const [k, v] of Object.entries(newFilters)) {
-      if (v && v !== "all") next[k] = v;
+  const scrollToGrid = () => {
+    if (gridRef.current && typeof window !== "undefined") {
+      const top = gridRef.current.getBoundingClientRect().top + window.scrollY - 80;
+      window.scrollTo({ top, behavior: "smooth" });
     }
+  };
+
+  const updateUrl = (newCat, newStudio, newSubgenre, newFilters) => {
+    const next = buildBrowseQuery(
+      {
+        category: newCat,
+        filters: newFilters,
+        extra: { studio: newStudio, subgenre: newSubgenre },
+      },
+      { defaultCategory: "trending", extraDefaults: EXTRA_DEFAULTS }
+    );
     router.replace({ pathname: "/anime", query: next }, undefined, { shallow: true });
-    gridRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    scrollToGrid();
   };
 
   const handleCategoryChange = (val) => {
+    setShuffleSeed(0);
     setCategory(val);
     updateUrl(val, studio, subgenre, filters);
   };
 
   const handleStudioChange = (val) => {
+    setShuffleSeed(0);
     setStudio(val);
     updateUrl(category, val, subgenre, filters);
   };
 
   const handleSubgenreChange = (val) => {
+    setShuffleSeed(0);
     setSubgenre(val);
     updateUrl(category, studio, val, filters);
   };
 
   const handleFilterChange = (key, val) => {
+    setShuffleSeed(0);
     const nextFilters = { ...filters, [key]: val };
     setFilters(nextFilters);
     updateUrl(category, studio, subgenre, nextFilters);
+  };
+
+  const handleResetFilters = () => {
+    setShuffleSeed(0);
+    setCategory("trending");
+    setStudio("all");
+    setSubgenre("all");
+    setFilters(DEFAULT_FILTERS);
+    updateUrl("trending", "all", "all", DEFAULT_FILTERS);
   };
 
   const handleShuffle = () => {
     setShuffleSeed((s) => s + 1);
   };
 
+  const activeFilterCount = useMemo(
+    () =>
+      countActiveFilters(
+        { category, filters, extra: { studio, subgenre } },
+        { defaultCategory: "trending", extraDefaults: EXTRA_DEFAULTS }
+      ),
+    [category, filters, studio, subgenre]
+  );
+
   const displayedAnime = useMemo(() => {
     if (!animeList || animeList.length === 0) return [];
-    if (shuffleSeed > 0) {
-      return [...animeList].sort(() => Math.sin(shuffleSeed * 9999 + 1) - 0.5);
-    }
-    return animeList;
+    return shuffleSeed > 0 ? seededShuffle(animeList, shuffleSeed) : animeList;
   }, [animeList, shuffleSeed]);
 
   return (
@@ -295,6 +464,8 @@ export default function Anime({ initialHero = [], initialTrending = [], initialT
           onFilterChange={handleFilterChange}
           filterOptions={filterOptions}
           onShuffle={handleShuffle}
+          activeFilterCount={activeFilterCount}
+          onReset={handleResetFilters}
         />
 
         <div style={{ display: "grid", gap: 12, marginTop: 16, marginBottom: 24 }}>
@@ -314,12 +485,66 @@ export default function Anime({ initialHero = [], initialTrending = [], initialT
 
         {animeLoading ? (
           <SkeletonGrid count={12} wide={true} />
+        ) : animeError ? (
+          <Empty
+            title={isOffline ? "You appear to be offline" : "Couldn't load anime"}
+            text={
+              isOffline
+                ? "Reconnect to the internet to browse anime from AniList."
+                : "There was a problem loading anime from AniList. Please try again."
+            }
+            actionLabel="Try again"
+            onAction={() => setRetryCount((c) => c + 1)}
+          />
         ) : displayedAnime.length > 0 ? (
-          <TitleGrid items={displayedAnime} wide={true} />
+          <>
+            <TitleGrid items={displayedAnime} wide={true} />
+
+            {hasMore && (
+              <div
+                ref={infiniteTriggerRef}
+                style={{
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  padding: "36px 0 16px",
+                  minHeight: "60px",
+                }}
+              >
+                {loadingMore && (
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
+                      color: "rgba(255, 255, 255, 0.65)",
+                      fontSize: "14px",
+                      fontWeight: 500,
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: "18px",
+                        height: "18px",
+                        border: "2px solid rgba(255, 255, 255, 0.2)",
+                        borderTopColor: "#ffffff",
+                        borderRadius: "50%",
+                        animation: "vSpin 0.8s linear infinite",
+                        display: "inline-block",
+                      }}
+                    />
+                    <span>Loading more anime...</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </>
         ) : (
           <Empty
             title="No anime found"
-            text="No anime match your selected AniList filters. Try another genre."
+            text="No anime match your selected filters. Try resetting studio, sub-genre or year."
+            actionLabel={activeFilterCount > 0 ? "Reset filters" : undefined}
+            onAction={activeFilterCount > 0 ? handleResetFilters : undefined}
           />
         )}
       </section>
@@ -333,7 +558,7 @@ export default function Anime({ initialHero = [], initialTrending = [], initialT
               key={t.id || t.anilistId}
               title={t}
               rank={i + 1}
-              badge={t.badge || `★ ${t.rating}`}
+              badge={t.badge || (Number(t.rating) > 0 ? `★ ${t.rating}` : undefined)}
             />
           ))}
         </MediaRow>

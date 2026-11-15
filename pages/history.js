@@ -5,7 +5,8 @@ import { Empty } from "../components/Page";
 import Art from "../components/Art";
 import { getCardMap } from "../lib/data.server";
 import { useHistory, removeFromHistory, entryCard } from "../lib/store";
-import { Play, X, Trash2, Film, Tv, Clock } from "lucide-react";
+import { groupHistoryEntries, filterHistoryEntries } from "../lib/accountHelpers";
+import { Play, X, Trash2, Film, Tv, Drama, Clock } from "lucide-react";
 import styles from "../styles/History.module.css";
 
 export async function getStaticProps() {
@@ -16,33 +17,6 @@ export async function getStaticProps() {
     },
     revalidate: 1800,
   };
-}
-
-function groupEntriesByDate(entries = []) {
-  const today = [];
-  const yesterday = [];
-  const thisWeek = [];
-  const earlier = [];
-
-  const now = new Date();
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-  const startOfYesterday = startOfToday - 86400000;
-  const startOfThisWeek = startOfToday - 6 * 86400000;
-
-  entries.forEach((item) => {
-    const at = item.at || (item.watchedAt ? new Date(item.watchedAt).getTime() : 0);
-    if (at >= startOfToday) today.push(item);
-    else if (at >= startOfYesterday) yesterday.push(item);
-    else if (at >= startOfThisWeek) thisWeek.push(item);
-    else earlier.push(item);
-  });
-
-  return [
-    { title: "Today", items: today },
-    { title: "Yesterday", items: yesterday },
-    { title: "This week", items: thisWeek },
-    { title: "Earlier", items: earlier },
-  ].filter((g) => g.items.length > 0);
 }
 
 export default function History({ cardMap = {} }) {
@@ -83,56 +57,37 @@ export default function History({ cardMap = {} }) {
   // Counts for filter pills
   const counts = useMemo(() => {
     const movies = allEntries.filter((e) => e.title.type === "movie").length;
-    const series = allEntries.filter((e) => e.title.type === "series" || e.title.type === "anime").length;
-    const inProgress = allEntries.filter((e) => (e.progress || 0) < 1).length;
-    const completed = allEntries.filter((e) => (e.progress || 0) >= 1).length;
+    const series = allEntries.filter((e) => e.title.type === "series" || e.title.type === "tv").length;
+    const anime = allEntries.filter((e) => e.title.type === "anime").length;
+    const inProgress = allEntries.filter((e) => (e.progress || 0) < 0.95).length;
+    const completed = allEntries.filter((e) => (e.progress || 0) >= 0.95).length;
     return {
       all: allEntries.length,
       movies,
       series,
+      anime,
       inProgress,
       completed,
     };
   }, [allEntries]);
 
   // Filtered & searched entries
-  const displayedEntries = useMemo(() => {
-    let list = allEntries;
-
-    if (activeFilter === "movies") {
-      list = list.filter((e) => e.title.type === "movie");
-    } else if (activeFilter === "series") {
-      list = list.filter((e) => e.title.type === "series" || e.title.type === "anime");
-    } else if (activeFilter === "in_progress") {
-      list = list.filter((e) => (e.progress || 0) < 1);
-    } else if (activeFilter === "completed") {
-      list = list.filter((e) => (e.progress || 0) >= 1);
-    }
-
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      list = list.filter(
-        (e) =>
-          e.title.title.toLowerCase().includes(q) ||
-          (e.title.genres || []).some((g) => g.toLowerCase().includes(q))
-      );
-    }
-
-    return list;
-  }, [allEntries, activeFilter, searchQuery]);
+  const displayedEntries = useMemo(
+    () => filterHistoryEntries(allEntries, activeFilter, searchQuery),
+    [allEntries, activeFilter, searchQuery]
+  );
 
   // Group entries by Today / Yesterday / This week / Earlier
-  const groupedSections = useMemo(() => {
-    return groupEntriesByDate(displayedEntries);
-  }, [displayedEntries]);
+  const groupedSections = useMemo(
+    () => groupHistoryEntries(displayedEntries),
+    [displayedEntries]
+  );
 
-  const handleRemoveItem = async (e, id) => {
+  const handleRemoveItem = (e, id) => {
     e.preventDefault();
     e.stopPropagation();
+    // SyncManager observes viv:history updates and persists to DB when signed in.
     removeFromHistory(setHistory, id);
-    try {
-      await fetch(`/api/user/history?id=${encodeURIComponent(id)}`, { method: "DELETE" });
-    } catch {}
   };
 
   const handleClearAll = () => {
@@ -147,7 +102,7 @@ export default function History({ cardMap = {} }) {
   return (
     <Layout
       title="Watch History · DIVINE"
-      description="Pick up where you left off across all your movies and series."
+      description="Pick up where you left off across all your movies, series, and anime."
     >
       <div className={`pageInner ${styles.pageWrap}`}>
         {/* Top Header Row */}
@@ -215,6 +170,16 @@ export default function History({ cardMap = {} }) {
                 <Tv size={13} />
                 Series ({counts.series})
               </button>
+              {counts.anime > 0 && (
+                <button
+                  type="button"
+                  className={`${styles.pill} ${activeFilter === "anime" ? styles.pillActive : ""}`}
+                  onClick={() => setActiveFilter("anime")}
+                >
+                  <Drama size={13} />
+                  Anime ({counts.anime})
+                </button>
+              )}
               <button
                 type="button"
                 className={`${styles.pill} ${activeFilter === "in_progress" ? styles.pillActive : ""}`}
@@ -262,7 +227,7 @@ export default function History({ cardMap = {} }) {
                 <div className={styles.historyGrid}>
                   {group.items.map((item) => {
                     const progressVal = Number.isFinite(item.progress) ? item.progress : 0;
-                    const isCompleted = progressVal >= 1;
+                    const isCompleted = progressVal >= 0.95;
                     const progressPct = Math.min(100, Math.round(progressVal * 100));
 
                     const isSeries = item.title.type === "series" || item.title.type === "anime";
@@ -274,7 +239,7 @@ export default function History({ cardMap = {} }) {
 
                     // Compute remaining time
                     const remMinutes = item.title.runtime
-                      ? Math.round(item.title.runtime * (1 - progressVal))
+                      ? Math.max(1, Math.round(item.title.runtime * (1 - progressVal)))
                       : null;
                     const remHours = remMinutes === null ? null : Math.floor(remMinutes / 60);
                     const remMins = remMinutes === null ? null : remMinutes % 60;
@@ -316,8 +281,8 @@ export default function History({ cardMap = {} }) {
                             type="button"
                             className={styles.removeBtn}
                             onClick={(e) => handleRemoveItem(e, item.id)}
-                            title="Remove from history"
-                            aria-label="Remove from history"
+                            title={`Remove ${item.title.title} from history`}
+                            aria-label={`Remove ${item.title.title} from history`}
                           >
                             <X size={15} />
                           </button>
@@ -341,22 +306,21 @@ export default function History({ cardMap = {} }) {
                           </h3>
                           <p className={styles.cardSub}>
                             {seriesLabel ? (
-                              <>
-                                <span style={{ color: "var(--primary, #8fe388)", fontWeight: 600 }}>
-                                  {seriesLabel}
-                                </span>
-                                <span className={styles.dot}>•</span>
-                              </>
-                            ) : (
-                              <>
-                                <span>{item.title.year}</span>
-                                <span className={styles.dot}>•</span>
-                              </>
+                              <span style={{ color: "rgba(255, 255, 255, 0.9)", fontWeight: 600 }}>
+                                {seriesLabel}
+                              </span>
+                            ) : item.title.year ? (
+                              <span>{item.title.year}</span>
+                            ) : null}
+                            {(seriesLabel || item.title.year) && timeRemaining && (
+                              <span className={styles.dot}>•</span>
                             )}
-                            <span className={styles.timeLeft}>
-                              <Clock size={11} style={{ display: "inline", marginRight: 4 }} />
-                              {timeRemaining}
-                            </span>
+                            {timeRemaining && (
+                              <span className={styles.timeLeft}>
+                                <Clock size={11} style={{ display: "inline", marginRight: 4 }} />
+                                {timeRemaining}
+                              </span>
+                            )}
                           </p>
                         </div>
                       </Link>

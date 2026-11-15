@@ -3,6 +3,7 @@ import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { Search as SearchIcon, X, User } from "lucide-react";
 import Layout from "../components/Layout";
+import Art from "../components/Art";
 import { Empty } from "../components/Page";
 import { SkeletonGrid } from "../components/Skeleton";
 import styles from "../styles/Search.module.css";
@@ -33,21 +34,39 @@ export default function SearchPage() {
   const [peopleResults, setPeopleResults] = useState([]);
   const [didYouMean, setDidYouMean] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [searchError, setSearchError] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+  const [isOffline, setIsOffline] = useState(false);
+  const [failedAvatars, setFailedAvatars] = useState(() => new Set());
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const syncNetwork = () => setIsOffline(!window.navigator.onLine);
+    syncNetwork();
+    window.addEventListener("online", syncNetwork);
+    window.addEventListener("offline", syncNetwork);
+    return () => {
+      window.removeEventListener("online", syncNetwork);
+      window.removeEventListener("offline", syncNetwork);
+    };
+  }, []);
 
   // Sync state if URL query changes
   useEffect(() => {
-    if (router.isReady) {
-      if (qParam !== inputVal) setInputVal(qParam);
-      if (tabParam !== activeTab) setActiveTab(tabParam);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (!router.isReady) return;
+    setInputVal((prev) => (prev === qParam ? prev : qParam));
+    setActiveTab((prev) => (prev === tabParam ? prev : tabParam));
   }, [qParam, tabParam, router.isReady]);
 
-  // Execute search (TMDB for movies/series, AniList for anime)
+  // Execute search after router isReady (TMDB for movies/series/people, AniList for anime)
   useEffect(() => {
+    if (!router.isReady) return;
+
     if (!qParam.trim()) {
       setResults([]);
       setPeopleResults([]);
+      setDidYouMean(null);
+      setSearchError(false);
       setLoading(false);
       return;
     }
@@ -55,50 +74,57 @@ export default function SearchPage() {
     let active = true;
     const controller = new AbortController();
     setLoading(true);
+    setSearchError(false);
 
     const isPeople = activeTab === "people";
     const isAnime = activeTab === "anime";
 
     if (isPeople) {
       fetch(`/api/tmdb/search?q=${encodeURIComponent(qParam)}&type=person`, { signal: controller.signal })
-        .then((res) => (res.ok ? res.json() : []))
+        .then((res) => {
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          return res.json();
+        })
         .then((data) => {
           if (!active) return;
           setPeopleResults(Array.isArray(data) ? data : []);
+          setDidYouMean(null);
           setLoading(false);
         })
         .catch((err) => {
-          if (!active) return;
-          if (err.name !== "AbortError") {
-            console.error("People search error:", err);
-            setLoading(false);
-          }
+          if (!active || err?.name === "AbortError") return;
+          setPeopleResults([]);
+          setSearchError(true);
+          setLoading(false);
         });
     } else if (isAnime) {
       fetch(`/api/anilist/search?q=${encodeURIComponent(qParam)}`, { signal: controller.signal })
-        .then((res) => (res.ok ? res.json() : []))
+        .then((res) => {
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          return res.json();
+        })
         .then((data) => {
           if (!active) return;
           setResults(Array.isArray(data) ? data : []);
+          setDidYouMean(null);
           setLoading(false);
         })
         .catch((err) => {
-          if (!active) return;
-          if (err.name !== "AbortError") {
-            console.error("AniList search error:", err);
-            setLoading(false);
-          }
+          if (!active || err?.name === "AbortError") return;
+          setResults([]);
+          setSearchError(true);
+          setLoading(false);
         });
     } else {
       // Tab is "all", "movies", or "series"
       let currentSuggestion = null;
       const tmdbPromise = fetch(`/api/tmdb/search?q=${encodeURIComponent(qParam)}`, { signal: controller.signal })
         .then(async (res) => {
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
           currentSuggestion = res.headers.get("X-Did-You-Mean");
-          const data = res.ok ? await res.json() : [];
+          const data = await res.json();
           return Array.isArray(data) ? data : data?.results || [];
-        })
-        .catch(() => []);
+        });
 
       const animePromise =
         activeTab === "all"
@@ -117,11 +143,10 @@ export default function SearchPage() {
           setLoading(false);
         })
         .catch((err) => {
-          if (!active) return;
-          if (err.name !== "AbortError") {
-            console.error("Combined search error:", err);
-            setLoading(false);
-          }
+          if (!active || err?.name === "AbortError") return;
+          setResults([]);
+          setSearchError(true);
+          setLoading(false);
         });
     }
 
@@ -129,7 +154,7 @@ export default function SearchPage() {
       active = false;
       controller.abort();
     };
-  }, [qParam, activeTab]);
+  }, [router.isReady, qParam, activeTab, retryCount]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -174,11 +199,10 @@ export default function SearchPage() {
 
   return (
     <Layout
-      title={qParam ? `${qParam} · Search · DIVINE` : "Search · DIVINE"}
+      title={qParam ? `${qParam} · Search` : "Search"}
       description="Search movies, TV series, anime and people directly from TMDB."
     >
       <div className={styles.container}>
-        {/* Search Input Bar matching Screenshot 2026-11-08 125604.png */}
         <form className={styles.searchBarWrap} onSubmit={handleSearchSubmit}>
           <input
             type="text"
@@ -186,7 +210,7 @@ export default function SearchPage() {
             placeholder="Search movies, series, anime, people…"
             value={inputVal}
             onChange={(e) => setInputVal(e.target.value)}
-            autoFocus
+            aria-label="Search DIVINE"
           />
           {inputVal && (
             <button
@@ -202,7 +226,7 @@ export default function SearchPage() {
         </form>
 
         {/* Filter Tabs: All | Movies | Series | Anime | People */}
-        <div className={styles.tabsRow} role="tablist">
+        <div className={styles.tabsRow} role="tablist" aria-label="Search categories">
           {TABS.map((tab) => {
             const isActive = activeTab === tab.id;
             return (
@@ -220,35 +244,13 @@ export default function SearchPage() {
           })}
         </div>
 
-        {/* Did you mean typo notice */}
-        {didYouMean && !loading && (
-          <div
-            style={{
-              margin: "0 0 20px",
-              padding: "12px 18px",
-              borderRadius: "10px",
-              background: "rgba(220, 38, 38, 0.1)",
-              border: "1px solid rgba(220, 38, 38, 0.25)",
-              color: "rgba(255, 255, 255, 0.8)",
-              fontSize: 14,
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-            }}
-          >
+        {/* Calm frosted glass Did you mean notice */}
+        {didYouMean && !loading && !searchError && (
+          <div className={styles.didYouMeanBanner}>
             <span>Showing results for</span>
             <button
               type="button"
-              style={{
-                background: "transparent",
-                border: 0,
-                padding: 0,
-                color: "#f87171",
-                fontWeight: 600,
-                cursor: "pointer",
-                textDecoration: "underline",
-                fontSize: 14,
-              }}
+              className={styles.didYouMeanBtn}
               onClick={() => {
                 setInputVal(didYouMean);
                 router.replace(
@@ -264,102 +266,137 @@ export default function SearchPage() {
         )}
 
         {/* Content State */}
-        {loading ? (
-          <SkeletonGrid count={6} wide={true} />
-        ) : activeTab === "people" ? (
-          peopleResults.length > 0 ? (
-            <div className={styles.peopleGrid}>
-              {peopleResults.map((person) => (
-                <div key={person.id} className={styles.personCard}>
-                  <div className={styles.personAvatarWrap}>
-                    {person.profile && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={person.profile}
-                        alt=""
-                        className={styles.personAvatarImg}
-                        loading="lazy"
-                        onError={(e) => {
-                          e.currentTarget.style.display = "none";
-                          const fallback = e.currentTarget.parentElement?.querySelector(`.${styles.personFallbackAvatar}`);
-                          if (fallback) fallback.style.display = "flex";
-                        }}
-                      />
-                    )}
-                    <div
-                      className={styles.personFallbackAvatar}
-                      style={{
-                        display: person.profile ? "none" : "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        width: "100%",
-                        height: "100%",
-                      }}
-                    >
-                      <User size={44} color="rgba(255, 255, 255, 0.4)" />
+        <div aria-live="polite">
+          {loading ? (
+            <SkeletonGrid count={6} wide={true} />
+          ) : searchError ? (
+            <Empty
+              title={isOffline ? "You appear to be offline" : "Search failed"}
+              text={
+                isOffline
+                  ? "Reconnect to the internet to search movies, series, anime and people."
+                  : `We couldn't complete your search for “${qParam}”. Try again.`
+              }
+              actionLabel="Try again"
+              onAction={() => setRetryCount((c) => c + 1)}
+            />
+          ) : activeTab === "people" ? (
+            peopleResults.length > 0 ? (
+              <div className={styles.peopleGrid}>
+                {peopleResults.map((person) => {
+                  const showAvatar = Boolean(person.profile) && !failedAvatars.has(person.id);
+                  return (
+                    <div key={person.id} className={styles.personCard}>
+                      <div className={styles.personAvatarWrap}>
+                        {showAvatar ? (
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img
+                            src={person.profile}
+                            alt={person.name}
+                            className={styles.personAvatarImg}
+                            loading="lazy"
+                            referrerPolicy="no-referrer"
+                            onError={() =>
+                              setFailedAvatars((prev) => {
+                                const next = new Set(prev);
+                                next.add(person.id);
+                                return next;
+                              })
+                            }
+                          />
+                        ) : (
+                          <div
+                            className={styles.personFallbackAvatar}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              width: "100%",
+                              height: "100%",
+                            }}
+                          >
+                            <User size={44} color="rgba(255, 255, 255, 0.4)" />
+                          </div>
+                        )}
+                      </div>
+                      <h3 className={styles.personName}>{person.name}</h3>
+                      {person.department && (
+                        <span className={styles.personDept}>{person.department}</span>
+                      )}
+                      {person.knownFor && (
+                        <p className={styles.personKnownFor}>Known for: {person.knownFor}</p>
+                      )}
                     </div>
-                  </div>
-                  <h3 className={styles.personName}>{person.name}</h3>
-                  <span className={styles.personDept}>{person.department || "Acting"}</span>
-                  {person.knownFor && (
-                    <p className={styles.personKnownFor}>Known for: {person.knownFor}</p>
-                  )}
-                </div>
-              ))}
+                  );
+                })}
+              </div>
+            ) : qParam ? (
+              <Empty
+                title="No people found"
+                text={`No actors, directors or creators match “${qParam}”.`}
+              />
+            ) : (
+              <Empty
+                title="Search people"
+                text="Search for actors, directors and creators to explore their work."
+              />
+            )
+          ) : displayedTitles.length > 0 ? (
+            <div className={styles.resultsList}>
+              {displayedTitles.map((item) => {
+                const metaParts = [
+                  item.year || null,
+                  item.type === "movie" ? "Movie" : item.type === "anime" ? "Anime" : "Series",
+                ].filter(Boolean);
+                return (
+                  <Link
+                    key={item.id}
+                    href={`/title/${item.id}`}
+                    className={styles.resultCard}
+                  >
+                    <div className={styles.thumbWrap}>
+                      <Art
+                        title={item}
+                        variant="backdrop"
+                        showTitle={false}
+                        className={styles.thumbImg}
+                      />
+                    </div>
+                    <div className={styles.infoCol}>
+                      <h2 className={styles.cardTitle}>{item.title}</h2>
+                      <div className={styles.cardMeta}>
+                        {metaParts.map((part, idx) => (
+                          <span key={idx} style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                            {idx > 0 && <span aria-hidden="true">·</span>}
+                            <span>{part}</span>
+                          </span>
+                        ))}
+                      </div>
+                      {Number(item.rating) > 0 && (
+                        <div className={styles.ratingRow}>
+                          <span className={styles.rating}>★ {Number(item.rating).toFixed(1)}</span>
+                        </div>
+                      )}
+                      {item.overview && <p className={styles.overview}>{item.overview}</p>}
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
           ) : qParam ? (
             <Empty
-              title="No people found"
-              text={`No actors, directors or creators match “${qParam}”.`}
+              title="No titles found"
+              text={`No results matched “${qParam}”. Try checking spelling or switching categories.`}
+              actionLabel={activeTab !== "all" ? "Show all categories" : undefined}
+              onAction={activeTab !== "all" ? () => handleTabChange("all") : undefined}
             />
-          ) : null
-        ) : displayedTitles.length > 0 ? (
-          <div className={styles.resultsList}>
-            {displayedTitles.map((item) => (
-              <Link
-                key={item.id}
-                href={`/title/${item.id}`}
-                className={styles.resultCard}
-              >
-                <div className={styles.thumbWrap}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={item.backdrop || item.poster}
-                    alt={item.title}
-                    className={styles.thumbImg}
-                    loading="lazy"
-                  />
-                </div>
-                <div className={styles.infoCol}>
-                  <h2 className={styles.cardTitle}>{item.title}</h2>
-                  <div className={styles.cardMeta}>
-                    {item.year && <span>{item.year}</span>}
-                    {item.year && <span>·</span>}
-                    <span style={{ textTransform: "capitalize" }}>
-                      {item.type === "movie" ? "Movie" : item.type === "anime" ? "Anime" : "Series"}
-                    </span>
-                  </div>
-                  {item.rating > 0 && (
-                    <div className={styles.ratingRow}>
-                      <span className={styles.rating}>★ {item.rating}</span>
-                    </div>
-                  )}
-                  <p className={styles.overview}>{item.overview}</p>
-                </div>
-              </Link>
-            ))}
-          </div>
-        ) : qParam ? (
-          <Empty
-            title="No titles found"
-            text={`No results matched “${qParam}”. Try checking spelling or searching for something else.`}
-          />
-        ) : (
-          <Empty
-            title="Search DIVINE"
-            text="Type any movie, TV series, anime, or person above to explore titles from TMDB."
-          />
-        )}
+          ) : (
+            <Empty
+              title="Search DIVINE"
+              text="Type any movie, TV series, anime, or person above to explore titles."
+            />
+          )}
+        </div>
       </div>
     </Layout>
   );

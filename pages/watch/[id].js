@@ -4,33 +4,18 @@ import { useRouter } from "next/router";
 import {
   ArrowLeft,
   Tv,
-  Film,
   ThumbsUp,
   ThumbsDown,
-  Bookmark,
   Check,
   Star,
-  Download,
   Share2,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  Cast,
-  Captions,
-  Maximize,
-  PictureInPicture2,
-  Play,
-  RectangleHorizontal,
-  RotateCcw,
-  RotateCw,
-  Settings,
-  Volume2,
-  Zap,
-  Server,
   Sparkles,
   Plus,
   ArrowUpDown,
-  Eye,
+  Download,
 } from "lucide-react";
 import Layout from "../../components/Layout";
 import LoadingScreen from "../../components/LoadingScreen";
@@ -42,6 +27,14 @@ import { getAllCardTitles, getTitle } from "../../lib/data.server";
 import { fetchLiveTitle, fetchImdbId } from "../../lib/tmdb";
 import { fetchAniListDetails, extractAniListId } from "../../lib/anilist";
 import { resolveGreekGodSources, resolveMediaIdentifiers } from "../../lib/servers";
+import {
+  formatResumeTime,
+  extractResumeSeconds,
+  computeNextEpisode,
+  pickNextAvailableServer,
+  getSeasonEpisodeCount,
+  getSafeDownloadUrl,
+} from "../../lib/watchHelpers";
 import {
   useHistory,
   useSettings,
@@ -167,6 +160,7 @@ function WatchContent({ title: t, id, season, episode, isReady }) {
 
   const [showFullOverview, setShowFullOverview] = useState(false);
   const [isTheater, setIsTheater] = useState(false);
+  const [commentSort, setCommentSort] = useState("top");
   const [newCommentText, setNewCommentText] = useState("");
   const [comments, setComments] = useState(() => {
     if (typeof window === "undefined") return [];
@@ -182,6 +176,7 @@ function WatchContent({ title: t, id, season, episode, isReady }) {
     if (!newCommentText.trim()) return;
     const newC = {
       id: `c_${Date.now()}`,
+      createdAt: Date.now(),
       author: settings.name || "Guest",
       avatar: settings.avatar || "/avatars/movie-spiderman.jpg",
       time: "Just now",
@@ -215,6 +210,14 @@ function WatchContent({ title: t, id, season, episode, isReady }) {
     });
   };
 
+  const sortedComments = useMemo(() => {
+    const copy = [...comments];
+    if (commentSort === "newest") {
+      return copy.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    }
+    return copy.sort((a, b) => (b.likes || 0) - (a.likes || 0));
+  }, [comments, commentSort]);
+
   const currentSeason = Number(season) || 1;
   const currentEpisode = Number(episode) || 1;
 
@@ -236,26 +239,52 @@ function WatchContent({ title: t, id, season, episode, isReady }) {
   // so ongoing playback timeupdates do not trigger source refetches or re-renders
   const currentMediaKey = `${id}-s${currentSeason}-e${currentEpisode}`;
   const lastMediaKeyRef = useRef(null);
+  const resumeResolvedForKeyRef = useRef(null);
   const initialSavedSecondsRef = useRef(0);
   const initialProgressRef = useRef(0);
+  const resumeToastShownRef = useRef(null);
 
-  if (lastMediaKeyRef.current !== currentMediaKey) {
+  if (
+    lastMediaKeyRef.current !== currentMediaKey ||
+    (resumeResolvedForKeyRef.current !== currentMediaKey && history.length > 0)
+  ) {
     lastMediaKeyRef.current = currentMediaKey;
-    const initialItem = history.find(
-      (item) =>
-        item.id === t.id &&
-        (!isSeries || ((item.season || 1) === currentSeason && (item.episode || 1) === currentEpisode))
-    );
-    initialProgressRef.current = initialItem?.progress || 0;
-    initialSavedSecondsRef.current =
-      initialItem?.currentTime ||
-      (initialItem?.progress && initialItem?.secondsLeft && initialItem.progress > 0 && initialItem.progress < 0.95
-        ? Math.floor((initialItem.secondsLeft / (1 - initialItem.progress)) * initialItem.progress)
-        : 0);
+    if (history.length > 0) {
+      resumeResolvedForKeyRef.current = currentMediaKey;
+    }
+    if (settings.resumePlayback === false) {
+      initialProgressRef.current = 0;
+      initialSavedSecondsRef.current = 0;
+    } else {
+      const initialItem = history.find(
+        (item) =>
+          (item.id === t.id ||
+            (t.tmdbId && String(item.tmdbId || item.id) === String(t.tmdbId)) ||
+            String(item.id) === String(id)) &&
+          (!isSeries || ((item.season || 1) === currentSeason && (item.episode || 1) === currentEpisode))
+      );
+      const rawProg = Number(initialItem?.progress || 0);
+      initialProgressRef.current = rawProg > 0 && rawProg < 0.95 ? rawProg : 0;
+      initialSavedSecondsRef.current = extractResumeSeconds(
+        initialItem,
+        t?.runtime ? t.runtime * 60 : 0
+      );
+    }
   }
 
   const initialResumeSeconds = initialSavedSecondsRef.current || 0;
   const initialResumeProgress = initialProgressRef.current || 0;
+
+  useEffect(() => {
+    if (
+      settings.resumePlayback !== false &&
+      initialResumeSeconds > 10 &&
+      resumeToastShownRef.current !== currentMediaKey
+    ) {
+      resumeToastShownRef.current = currentMediaKey;
+      showToast(`Resuming from ${formatResumeTime(initialResumeSeconds)}`);
+    }
+  }, [currentMediaKey, initialResumeSeconds, settings.resumePlayback, showToast]);
 
   // Initialize immediately with Greek God servers (Poseidon default, Zeus second, etc.)
   const [sources, setSources] = useState(() => {
@@ -358,14 +387,40 @@ function WatchContent({ title: t, id, season, episode, isReady }) {
   }, [showSeasonMenu]);
 
   useEffect(() => {
-    setSelectedServerId(null);
+    let remembered = null;
+    if (settings.rememberLastSource && typeof window !== "undefined") {
+      try {
+        const savedId = window.localStorage.getItem("viv:last_server");
+        if (savedId && sources.servers.some((s) => s.id === savedId && s.status === "online")) {
+          remembered = savedId;
+        }
+      } catch {}
+    }
+    setSelectedServerId(remembered);
     setShowSourceMenu(false);
     setShowSeasonMenu(false);
-  }, [id, season, episode]);
+  }, [id, season, episode, settings.rememberLastSource, sources.servers]);
+
+  const handleSelectServer = useCallback(
+    (srvId) => {
+      setSelectedServerId(srvId);
+      if (settings.rememberLastSource && typeof window !== "undefined" && srvId) {
+        try {
+          window.localStorage.setItem("viv:last_server", srvId);
+        } catch {}
+      }
+    },
+    [settings.rememberLastSource]
+  );
 
   const isSaved = inList(list, t.id);
   const userReaction = reactions?.[t.id] || null;
-  const activeServer = sources.servers.find((server) => server.id === (selectedServerId || sources.default));
+  const activeServerId = selectedServerId || sources.default;
+  const activeServer = sources.servers.find((server) => server.id === activeServerId);
+  const alternateServer = pickNextAvailableServer(sources.servers, activeServerId);
+  const activeDownloadUrl = getSafeDownloadUrl(
+    activeServer?.downloadUrl || activeServer?.download || activeServer?.download_url
+  );
 
   const watchedList = (t.id && watchedEpisodes?.[t.id]) || [];
 
@@ -380,6 +435,7 @@ function WatchContent({ title: t, id, season, episode, isReady }) {
   }, [isSeries, t]);
 
   const [seasonEpisodesMap, setSeasonEpisodesMap] = useState({});
+  const [loadingSeason, setLoadingSeason] = useState(false);
 
   useEffect(() => {
     if (!isSeries || !t || currentSeason === 1) return;
@@ -394,18 +450,23 @@ function WatchContent({ title: t, id, season, episode, isReady }) {
     if (!numericTmdbId) return;
 
     let active = true;
+    setLoadingSeason(true);
     fetch(`/api/tmdb/season?tvId=${numericTmdbId}&season=${currentSeason}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
-        if (!active || !data?.episodes) return;
-        setSeasonEpisodesMap((prev) => ({
-          ...prev,
-          [currentSeason]: data.episodes,
-        }));
+        if (!active) return;
+        if (data?.episodes) {
+          setSeasonEpisodesMap((prev) => ({
+            ...prev,
+            [currentSeason]: data.episodes,
+          }));
+        }
+        setLoadingSeason(false);
       })
       .catch((err) => {
         if (!active) return;
         console.error("Watch season fetch error:", err);
+        setLoadingSeason(false);
       });
 
     return () => {
@@ -427,8 +488,8 @@ function WatchContent({ title: t, id, season, episode, isReady }) {
       list.sort((a, b) => (Number(a.episodeNumber ?? a.episode_number) || 0) - (Number(b.episodeNumber ?? b.episode_number) || 0));
       return list;
     }
-    // Fallback for currentSeason > 1
-    const count = (t.episodes?.length) || 12;
+    const count = getSeasonEpisodeCount(t, currentSeason);
+    if (!count) return [];
     const fallback = [];
     for (let i = 1; i <= count; i++) {
       fallback.push({
@@ -436,7 +497,7 @@ function WatchContent({ title: t, id, season, episode, isReady }) {
         title: `Episode ${i}`,
         overview: `Season ${currentSeason}, Episode ${i}`,
         still: t.backdrop || t.poster,
-        runtime: t.runtime || 24,
+        runtime: t.runtime || null,
       });
     }
     return fallback;
@@ -539,6 +600,7 @@ function WatchContent({ title: t, id, season, episode, isReady }) {
 
   const saveProgress = useCallback(
     (time, duration) => {
+      if (settings.incognito) return;
       if (!Number.isFinite(time) || time < 0) return;
       const validDuration =
         Number.isFinite(duration) && duration > 0
@@ -565,6 +627,7 @@ function WatchContent({ title: t, id, season, episode, isReady }) {
 
       const entry = {
         id: t.id,
+        tmdbId: t.tmdbId || null,
         title: toSnapshot(t),
         progress,
         timeLeft,
@@ -578,30 +641,48 @@ function WatchContent({ title: t, id, season, episode, isReady }) {
       setHistory((previous) => {
         const list = previous || [];
         const filtered = list.filter((item) => {
-          if (item.id !== t.id) return true;
+          const sameTitle =
+            item.id === t.id ||
+            (t.tmdbId && String(item.tmdbId || item.id) === String(t.tmdbId));
+          if (!sameTitle) return true;
           if (!isSeries) return false;
           return !((item.season || 1) === currentSeason && (item.episode || 1) === currentEpisode);
         });
         return [entry, ...filtered].slice(0, 60);
       });
     },
-    [t, isSeries, currentSeason, currentEpisode, setHistory]
+    [settings.incognito, t, isSeries, currentSeason, currentEpisode, setHistory]
   );
 
   const handleMarkWatched = useCallback(() => {
-    if (isSeries && t.id) {
+    if (!t.id) return;
+    if (isSeries) {
       const epKey = currentSeason > 1 ? `s${currentSeason}_e${currentEpisode}` : currentEpisode;
       const altKey = currentSeason === 1 ? `s1_e${currentEpisode}` : null;
       toggleWatchedEpisode(setWatchedEpisodes, t.id, epKey, altKey);
+    } else {
+      toggleWatchedEpisode(setWatchedEpisodes, t.id, "movie", "watched");
     }
   }, [isSeries, t.id, currentSeason, currentEpisode, setWatchedEpisodes]);
 
-  const hasNext = isSeries && currentEpisode < totalEpisodes;
+  const nextEpInfo = useMemo(
+    () =>
+      computeNextEpisode({
+        isSeries,
+        currentSeason,
+        currentEpisode,
+        totalSeasons,
+        totalEpisodes,
+      }),
+    [isSeries, currentSeason, currentEpisode, totalSeasons, totalEpisodes]
+  );
+
+  const hasNext = Boolean(nextEpInfo);
   const goNext = useCallback(() => {
-    if (hasNext) {
-      router.push(`/watch/${t.id}?season=${currentSeason}&episode=${currentEpisode + 1}`);
+    if (nextEpInfo) {
+      router.push(`/watch/${t.id}?season=${nextEpInfo.season}&episode=${nextEpInfo.episode}`);
     }
-  }, [router, t.id, currentSeason, currentEpisode, hasNext]);
+  }, [router, t.id, nextEpInfo]);
 
   const goPrev = useCallback(() => {
     if (currentEpisode > 1) {
@@ -610,14 +691,6 @@ function WatchContent({ title: t, id, season, episode, isReady }) {
   }, [router, t.id, currentSeason, currentEpisode]);
 
   const room = typeof router.query.room === "string" && /^[A-Za-z2-9]{5}$/.test(router.query.room) ? router.query.room : null;
-
-  const baseLikes = useMemo(() => {
-    const seed = (t.voteCount || (t.id ? t.id.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0) : 52));
-    return Math.max(18, Math.round((seed % 65) + 24));
-  }, [t.voteCount, t.id]);
-
-  const likesCount = baseLikes + (userReaction === "like" ? 1 : 0);
-  const dislikesCount = Math.max(1, Math.round(baseLikes * 0.04)) + (userReaction === "dislike" ? 1 : 0);
 
   const handleReaction = (type) => {
     setReactions((prev) => ({
@@ -659,12 +732,14 @@ function WatchContent({ title: t, id, season, episode, isReady }) {
     ? `${overview.slice(0, synopsisLimit).trimEnd()}…`
     : overview;
 
-  const isTitleWatched = watchedList.some((item) => {
-    const s = String(item);
-    const epStr = String(currentEpisode);
-    if (currentSeason === 1 && (Number(item) === currentEpisode || s === epStr || s === `s1_e${epStr}`)) return true;
-    return s === `s${currentSeason}_e${epStr}`;
-  });
+  const isTitleWatched = isSeries
+    ? watchedList.some((item) => {
+        const s = String(item);
+        const epStr = String(currentEpisode);
+        if (currentSeason === 1 && (Number(item) === currentEpisode || s === epStr || s === `s1_e${epStr}`)) return true;
+        return s === `s${currentSeason}_e${epStr}`;
+      })
+    : watchedList.some((item) => String(item) === "movie" || String(item) === "watched");
 
   const formattedDate = useMemo(() => {
     if (currentEpisodeObj?.airDate) return currentEpisodeObj.airDate;
@@ -676,13 +751,30 @@ function WatchContent({ title: t, id, season, episode, isReady }) {
         return t.releaseDate;
       }
     }
-    return t.year ? String(t.year) : "2026";
+    return t.year ? String(t.year) : null;
   }, [currentEpisodeObj?.airDate, t.releaseDate, t.year]);
+
+  const metaHeaderItems = [
+    t.views ? { key: "views", node: <span>{t.views}</span> } : null,
+    formattedDate ? { key: "date", node: <span>{formattedDate}</span> } : null,
+    t.rating > 0
+      ? { key: "rating", node: <span style={{ color: "#fff", fontWeight: 700 }}>★ {t.rating.toFixed(1)}</span> }
+      : null,
+    isSeries
+      ? {
+          key: "ep",
+          node: (
+            <span className={styles.metaEpisodePill}>
+              S{currentSeason} E{currentEpisode}
+            </span>
+          ),
+        }
+      : null,
+  ].filter(Boolean);
 
   const {
     activeVideoEl,
     isLive: isLiveAmbient,
-    isCapturing,
     toggleCapture: toggleAmbientLive,
     getCropRect,
   } = useAmbientSource({
@@ -706,6 +798,15 @@ function WatchContent({ title: t, id, season, episode, isReady }) {
       <div className={styles.mainCol}>
         {/* Video Player Container */}
         <div ref={playerStageRef} className={styles.playerStageWrap}>
+          <Link
+            href={`/title/${t.id}`}
+            onClick={handleOutsideBack}
+            className={styles.outsideBackBtn}
+            aria-label={`Back to ${t.title}`}
+            title="Title details"
+          >
+            <ArrowLeft size={18} />
+          </Link>
           <div className={styles.playerWrap}>
             {mode === "trailer" && t.trailerKey ? (
               <div className={styles.stage}>
@@ -739,8 +840,10 @@ function WatchContent({ title: t, id, season, episode, isReady }) {
                 initialProgress={initialResumeProgress}
                 initialProgressSeconds={initialResumeSeconds}
                 onProgress={saveProgress}
+                onServerChange={handleSelectServer}
+                onResumeNotice={showToast}
                 onWatched={handleMarkWatched}
-                nextEpisode={hasNext ? { season: currentSeason, episode: currentEpisode + 1 } : null}
+                nextEpisode={nextEpInfo}
                 onNext={goNext}
                 onEpisodeSelect={(s, ep) => {
                   router.push(`/watch/${t.id}?season=${s}&episode=${ep}`);
@@ -759,38 +862,27 @@ function WatchContent({ title: t, id, season, episode, isReady }) {
               <div className={styles.stage}>
                 <Art title={t} variant="backdrop" className={styles.art} />
                 <div className={styles.unavailableShade} />
-                <div className={styles.top} aria-hidden="true">
-                  <button type="button" className={styles.previewCast} aria-label="Cast to TV" disabled>
-                    <Cast size={22} />
-                  </button>
-                </div>
                 <div className={styles.status} role={sources.error ? "alert" : "status"}>
                   <p>{sources.loading ? "Finding streaming servers…" : sources.error || "No streams are available for this title."}</p>
                   {!sources.loading && (
-                    <button type="button" className="chip" onClick={() => setRequest((value) => value + 1)}>
-                      Retry sources
-                    </button>
+                    <div className={styles.unavailableActions}>
+                      {alternateServer && (
+                        <button
+                          type="button"
+                          className="chip"
+                          onClick={() => handleSelectServer(alternateServer.id)}
+                        >
+                          Try another server ({alternateServer.name})
+                        </button>
+                      )}
+                      <button type="button" className="chip" onClick={() => setRequest((value) => value + 1)}>
+                        Retry sources
+                      </button>
+                      <Link href={`/title/${t.id}`} className="chip">
+                        Back to title
+                      </Link>
+                    </div>
                   )}
-                </div>
-                <div className={styles.previewBar} aria-label="Player controls unavailable">
-                  <input className={styles.seek} type="range" min="0" max="0" value="0" disabled aria-label="Seek time" />
-                  <div className={styles.controls}>
-                    <div className={styles.controlsLeft}>
-                      <button type="button" className={styles.btn} disabled aria-label="Play"><Play size={22} fill="currentColor" /></button>
-                      <button type="button" className={styles.btn} disabled aria-label="Back 10 seconds"><RotateCcw size={19} /></button>
-                      <button type="button" className={styles.btn} disabled aria-label="Forward 10 seconds"><RotateCw size={19} /></button>
-                      <button type="button" className={styles.btn} disabled aria-label="Mute"><Volume2 size={20} /></button>
-                      <input className={styles.volume} type="range" min="0" max="1" value="1" disabled aria-label="Volume" />
-                      <span className={styles.time}>0:00 / 0:00</span>
-                    </div>
-                    <div className={styles.controlsRight}>
-                      <button type="button" className={styles.btn} disabled aria-label="Picture-in-Picture"><PictureInPicture2 size={19} /></button>
-                      <button type="button" className={styles.btn} disabled aria-label="Subtitles"><Captions size={19} /></button>
-                      <button type="button" className={styles.btn} disabled aria-label="Settings"><Settings size={19} /></button>
-                      <button type="button" className={styles.btn} disabled aria-label="Theatre mode"><RectangleHorizontal size={19} /></button>
-                      <button type="button" className={styles.btn} disabled aria-label="Fullscreen"><Maximize size={19} /></button>
-                    </div>
-                  </div>
                 </div>
               </div>
             )}
@@ -834,10 +926,11 @@ function WatchContent({ title: t, id, season, episode, isReady }) {
               className={`${styles.likeBtn} ${userReaction === "like" ? styles.likeBtnActive : ""}`}
               onClick={() => handleReaction("like")}
               aria-label="Like this title"
+              aria-pressed={userReaction === "like"}
               title="Like this title"
             >
               <ThumbsUp size={15} />
-              <span>{likesCount}</span>
+              <span>{userReaction === "like" ? "Liked" : "Like"}</span>
             </button>
             <div className={styles.likeDivider} />
             <button
@@ -845,10 +938,10 @@ function WatchContent({ title: t, id, season, episode, isReady }) {
               className={`${styles.dislikeBtn} ${userReaction === "dislike" ? styles.dislikeBtnActive : ""}`}
               onClick={() => handleReaction("dislike")}
               aria-label="Dislike this title"
-              title="Dislike this title"
+              aria-pressed={userReaction === "dislike"}
+              title="Not for me"
             >
               <ThumbsDown size={15} />
-              <span>{dislikesCount}</span>
             </button>
           </div>
 
@@ -856,6 +949,7 @@ function WatchContent({ title: t, id, season, episode, isReady }) {
           <button
             type="button"
             className={`${styles.actionPillBtn} ${isSaved ? styles.actionPillBtnActive : ""}`}
+            aria-pressed={isSaved}
             onClick={() => {
               toggleListEntry(setList, t.id, t);
               showToast(isSaved ? "Removed from watchlist" : "Saved to watchlist");
@@ -865,17 +959,17 @@ function WatchContent({ title: t, id, season, episode, isReady }) {
             <span>{isSaved ? "Saved" : "Save"}</span>
           </button>
 
-          {/* Server selector (Vivarium reference) */}
+          {/* Server selector */}
           <div ref={sourcePickerRef} className={styles.sourcePicker}>
             <button
               type="button"
               className={`${styles.actionPillBtn} ${showSourceMenu ? styles.actionPillBtnActive : ""}`}
-              aria-label={`Server: ${activeServer?.name || "Vivarium"}`}
+              aria-label={`Server: ${activeServer?.name || "Select server"}`}
               aria-expanded={showSourceMenu}
               onClick={() => setShowSourceMenu((open) => !open)}
             >
-              <Star size={14} fill="#f59e0b" color="#f59e0b" className={styles.serverStarIcon} />
-              <span>{activeServer?.name || "Vivarium"}</span>
+              <Star size={14} fill="currentColor" className={styles.serverStarIcon} />
+              <span>{activeServer?.name || "Select server"}</span>
               <ChevronDown size={13} className={`${styles.chevronIcon} ${showSourceMenu ? styles.chevronRotated : ""}`} />
             </button>
             {showSourceMenu && (
@@ -885,43 +979,59 @@ function WatchContent({ title: t, id, season, episode, isReady }) {
                   <span className={styles.sourceMenuCount}>{sources.servers.length} mirrors</span>
                 </div>
                 {sources.servers.length ? (
-                  sources.servers.map((server) => {
-                    const isActive = server.id === (selectedServerId || sources.default);
-                    return (
+                  <>
+                    {sources.servers.map((server) => {
+                      const isActive = server.id === (selectedServerId || sources.default);
+                      return (
+                        <button
+                          key={server.id}
+                          type="button"
+                          className={`${styles.sourceOption} ${isActive ? styles.sourceOptionActive : ""}`}
+                          disabled={server.status !== "online"}
+                          role="menuitem"
+                          onClick={() => {
+                            handleSelectServer(server.id);
+                            setShowSourceMenu(false);
+                          }}
+                        >
+                          <div className={styles.sourceChoice}>
+                            <span className={styles.sourceIndicator}>
+                              {isActive ? (
+                                <span className={styles.sourceDotActive} />
+                              ) : (
+                                <span className={styles.sourceDotIdle} />
+                              )}
+                            </span>
+                            <span className={styles.sourceName}>{server.name}</span>
+                          </div>
+                          <div className={styles.sourceMeta}>
+                            {server.id === (sources.default || "poseidon") ? (
+                              <span className={styles.sourceBadgeDefault}>Default</span>
+                            ) : server.status === "online" ? (
+                              <span className={styles.sourceBadgeOnline}>Online</span>
+                            ) : (
+                              <span className={styles.sourceBadgeOffline}>Offline</span>
+                            )}
+                            {isActive && <Check size={13} strokeWidth={2.5} className={styles.sourceCheckIcon} />}
+                          </div>
+                        </button>
+                      );
+                    })}
+                    {alternateServer && (
                       <button
-                        key={server.id}
                         type="button"
-                        className={`${styles.sourceOption} ${isActive ? styles.sourceOptionActive : ""}`}
-                        disabled={server.status !== "online"}
                         role="menuitem"
+                        className={styles.sourceMenuFooterBtn}
                         onClick={() => {
-                          setSelectedServerId(server.id);
+                          handleSelectServer(alternateServer.id);
                           setShowSourceMenu(false);
+                          showToast(`Switched to ${alternateServer.name}`);
                         }}
                       >
-                        <div className={styles.sourceChoice}>
-                          <span className={styles.sourceIndicator}>
-                            {isActive ? (
-                              <span className={styles.sourceDotActive} />
-                            ) : (
-                              <span className={styles.sourceDotIdle} />
-                            )}
-                          </span>
-                          <span className={styles.sourceName}>{server.name}</span>
-                        </div>
-                        <div className={styles.sourceMeta}>
-                          {server.id === (sources.default || "poseidon") ? (
-                            <span className={styles.sourceBadgeDefault}>Default</span>
-                          ) : server.status === "online" ? (
-                            <span className={styles.sourceBadgeOnline}>Online</span>
-                          ) : (
-                            <span className={styles.sourceBadgeOffline}>Offline</span>
-                          )}
-                          {isActive && <Check size={13} strokeWidth={2.5} className={styles.sourceCheckIcon} />}
-                        </div>
+                        Try another server ({alternateServer.name})
                       </button>
-                    );
-                  })
+                    )}
+                  </>
                 ) : (
                   <p className={styles.sourceEmpty}>{sources.loading ? "Finding servers…" : "No servers available"}</p>
                 )}
@@ -929,19 +1039,23 @@ function WatchContent({ title: t, id, season, episode, isReady }) {
             )}
           </div>
 
-          {/* Download (Pill per Vivarium reference) */}
-          <button
-            type="button"
-            className={styles.actionPillBtn}
-            aria-label="Download"
-            title="Download"
-            onClick={() => showToast("Downloads are not available for this stream")}
-          >
-            <Download size={15} />
-            <span>Download</span>
-          </button>
+          {/* Download (only shown when active server provides a real download link) */}
+          {activeDownloadUrl && (
+            <a
+              href={activeDownloadUrl}
+              download
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.actionPillBtn}
+              aria-label="Download"
+              title="Download"
+            >
+              <Download size={15} />
+              <span>Download</span>
+            </a>
+          )}
 
-          {/* Share (Pill per Vivarium reference) */}
+          {/* Share */}
           <button
             type="button"
             className={styles.actionPillBtn}
@@ -958,6 +1072,7 @@ function WatchContent({ title: t, id, season, episode, isReady }) {
             type="button"
             className={`${styles.actionPillBtn} ${styles.actionIconBtn} ${isTitleWatched ? styles.actionPillBtnActive : ""}`}
             onClick={handleMarkWatched}
+            aria-pressed={isTitleWatched}
             aria-label={isTitleWatched ? "Marked as watched" : "Mark as watched"}
             title={isTitleWatched ? "Watched" : "Mark as watched"}
           >
@@ -988,36 +1103,18 @@ function WatchContent({ title: t, id, season, episode, isReady }) {
           </button>
         </div>
 
-        {/* Metadata Box matching Vivarium reference */}
+        {/* Metadata Box */}
         <div className={styles.metaBox}>
-          <div className={styles.metaHeaderLine}>
-            <span>{t.views || "25K views"}</span>
-            {(t.releaseDate || t.year) && (
-              <>
-                <span className={styles.metaGap} />
-                <span>{formattedDate || t.releaseDate || t.year}</span>
-              </>
-            )}
-            {t.rating > 0 && (
-              <>
-                <span className={styles.metaGap} />
-                <span style={{ color: "#fff", fontWeight: 700 }}>★ {t.rating.toFixed(1)}</span>
-              </>
-            )}
-            {isSeries && (
-              <>
-                <span className={styles.metaGap} />
-                <span className={styles.metaEpisodePill}>
-                  S{currentSeason} E{currentEpisode}
+          {metaHeaderItems.length > 0 && (
+            <div className={styles.metaHeaderLine}>
+              {metaHeaderItems.map((item, idx) => (
+                <span key={item.key} style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                  {idx > 0 && <span className={styles.metaGap} />}
+                  {item.node}
                 </span>
-              </>
-            )}
-            <span className={styles.metaGap} />
-            <span className={styles.watchingBadge} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
-              <Eye size={13} strokeWidth={2} />
-              <span>12 watching</span>
-            </span>
-          </div>
+              ))}
+            </div>
+          )}
 
           <p className={styles.synopsisText}>
             {displayedOverview}
@@ -1037,16 +1134,26 @@ function WatchContent({ title: t, id, season, episode, isReady }) {
         <div className={styles.commentsSection}>
           <div className={styles.commentsHeadRow}>
             <h2 className={styles.commentsHeading}>
-              Comments <span className={styles.commentsCount}>{comments.length > 0 ? comments.length : 11}</span>
+              Comments {comments.length > 0 ? <span className={styles.commentsCount}>{comments.length}</span> : null}
             </h2>
-            <button type="button" className={styles.sortBtn} aria-label="Sort comments">
+            <button
+              type="button"
+              className={styles.sortBtn}
+              aria-label={`Sort comments by ${commentSort === "top" ? "newest" : "top"}`}
+              onClick={() => setCommentSort((prev) => (prev === "top" ? "newest" : "top"))}
+            >
               <ArrowUpDown size={14} strokeWidth={2.4} />
-              <span>Top</span>
+              <span>{commentSort === "top" ? "Top" : "Newest"}</span>
             </button>
           </div>
           <div className={styles.commentInputRow}>
             <div className={styles.commentAvatar}>
-              <img src={settings.avatar || "/avatars/movie-spiderman.jpg"} alt="User" />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={settings.avatar || "/avatars/movie-spiderman.jpg"}
+                alt="User"
+                referrerPolicy="no-referrer"
+              />
             </div>
             <div className={styles.commentInputWrap}>
               <input
@@ -1070,11 +1177,12 @@ function WatchContent({ title: t, id, season, episode, isReady }) {
           </div>
 
           <div className={styles.commentsList}>
-            {comments.length > 0 ? (
-              comments.map((c) => (
+            {sortedComments.length > 0 ? (
+              sortedComments.map((c) => (
                 <div key={c.id} className={styles.commentItem}>
                   <div className={styles.commentItemAvatar}>
-                    <img src={c.avatar} alt={c.author} />
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={c.avatar} alt={c.author} referrerPolicy="no-referrer" />
                   </div>
                   <div className={styles.commentItemBody}>
                     <div className={styles.commentItemHeader}>
@@ -1172,7 +1280,7 @@ function WatchContent({ title: t, id, season, episode, isReady }) {
                   type="button"
                   className={styles.navArrowBtn}
                   onClick={goNext}
-                  disabled={currentEpisode >= totalEpisodes}
+                  disabled={!hasNext}
                   aria-label="Next episode"
                 >
                   <ChevronRight size={16} />
@@ -1181,15 +1289,18 @@ function WatchContent({ title: t, id, season, episode, isReady }) {
             </div>
 
             <div className={styles.episodesScrollList}>
-              {episodesList.length ? episodesList.map((ep) => {
+              {loadingSeason && !seasonEpisodesMap[currentSeason] ? (
+                Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className={`skeleton ${styles.epRowSkeleton}`} aria-hidden="true" />
+                ))
+              ) : episodesList.length ? episodesList.map((ep) => {
                 const isActive = ep.episodeNumber === currentEpisode;
-                const isEpWatched =
-                  watchedList.some((item) => {
-                    const s = String(item);
-                    const epStr = String(ep.episodeNumber);
-                    if (currentSeason === 1 && (Number(item) === ep.episodeNumber || s === epStr || s === `s1_e${epStr}`)) return true;
-                    return s === `s${currentSeason}_e${epStr}`;
-                  }) || isActive;
+                const isEpWatched = watchedList.some((item) => {
+                  const s = String(item);
+                  const epStr = String(ep.episodeNumber);
+                  if (currentSeason === 1 && (Number(item) === ep.episodeNumber || s === epStr || s === `s1_e${epStr}`)) return true;
+                  return s === `s${currentSeason}_e${epStr}`;
+                });
                 return (
                   <Link
                     key={ep.episodeNumber}
@@ -1203,6 +1314,11 @@ function WatchContent({ title: t, id, season, episode, isReady }) {
                         alt={ep.title}
                         className={styles.epThumbImg}
                         loading="lazy"
+                        referrerPolicy="no-referrer"
+                        onError={(e) => {
+                          const fb = t.backdrop || t.poster;
+                          if (fb && e.currentTarget.src !== fb) e.currentTarget.src = fb;
+                        }}
                       />
                       {isEpWatched && (
                         <span className={styles.epCheckBadge}>
@@ -1223,7 +1339,7 @@ function WatchContent({ title: t, id, season, episode, isReady }) {
                     </div>
                   </Link>
                 );
-              }) : <p className={styles.sourceEmpty}>Episode information is unavailable.</p>}
+              }) : <p className={styles.sourceEmpty}>Episode information is unavailable for Season {currentSeason}.</p>}
             </div>
           </div>
         )}
@@ -1285,6 +1401,7 @@ function WatchContent({ title: t, id, season, episode, isReady }) {
                       alt={rec.title}
                       className={styles.recThumbImg}
                       loading="lazy"
+                      referrerPolicy="no-referrer"
                     />
                   </div>
                   <div className={styles.recInfoCol}>

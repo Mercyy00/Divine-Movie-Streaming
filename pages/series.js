@@ -8,6 +8,13 @@ import TileRow from "../components/TileRow";
 import { CatalogFilterBar, TitleGrid, Empty, Chips } from "../components/Page";
 import { SkeletonHero, SkeletonGrid, SkeletonRow } from "../components/Skeleton";
 import { SERVICES, LANGUAGES, BRAND } from "../lib/constants";
+import {
+  seededShuffle,
+  mergeUniqueMediaPage,
+  parseBrowseQuery,
+  buildBrowseQuery,
+  countActiveFilters,
+} from "../lib/catalogHelpers";
 
 export async function getStaticProps() {
   return {
@@ -23,6 +30,20 @@ const CATEGORIES = [
   { value: "airing_today", label: "Airing Today" },
   { value: "on_air", label: "On Air" },
 ];
+
+const VALID_CATEGORIES = CATEGORIES.map((c) => c.value);
+const FILTER_KEYS = ["genre", "country", "year", "service", "language", "rating"];
+
+const DEFAULT_FILTERS = {
+  genre: "all",
+  country: "all",
+  year: "all",
+  service: "all",
+  language: "all",
+  rating: "all",
+};
+
+const EXTRA_DEFAULTS = { network: "all" };
 
 const NETWORKS = [
   { value: "all", label: "All Networks" },
@@ -63,34 +84,22 @@ const COUNTRIES = [
   { value: "AU", label: "Australia" },
 ];
 
-const YEARS = [
-  "2026",
-  "2025",
-  "2024",
-  "2023",
-  "2022",
-  "2020s",
-  "2010s",
-  "Earlier",
-];
+const YEARS = ["2026", "2025", "2024", "2023", "2022", "2020s", "2010s", "Earlier"];
 
 export default function Series() {
   const router = useRouter();
   const gridRef = useRef(null);
   const infiniteTriggerRef = useRef(null);
-  const isInitialMount = useRef(true);
+  const itemsRef = useRef([]);
+  const loadingMoreRef = useRef(false);
+  const pageAbortRef = useRef(null);
 
   const [category, setCategory] = useState("trending");
   const [network, setNetwork] = useState("all");
-  const [filters, setFilters] = useState({
-    genre: "all",
-    country: "all",
-    year: "all",
-    service: "all",
-    language: "all",
-    rating: "all",
-  });
+  const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [shuffleSeed, setShuffleSeed] = useState(0);
+  const [retryCount, setRetryCount] = useState(0);
+  const [isOffline, setIsOffline] = useState(false);
 
   // Pagination & Infinite Scroll states
   const [page, setPage] = useState(1);
@@ -103,59 +112,52 @@ export default function Series() {
 
   const [seriesList, setSeriesList] = useState([]);
   const [seriesLoading, setSeriesLoading] = useState(true);
+  const [seriesError, setSeriesError] = useState(false);
 
   const [topSeries, setTopSeries] = useState([]);
   const [topLoading, setTopLoading] = useState(true);
 
-  // Sync state from URL query on initial load or back/forward navigation
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const syncNetwork = () => setIsOffline(!window.navigator.onLine);
+    syncNetwork();
+    window.addEventListener("online", syncNetwork);
+    window.addEventListener("offline", syncNetwork);
+    return () => {
+      window.removeEventListener("online", syncNetwork);
+      window.removeEventListener("offline", syncNetwork);
+    };
+  }, []);
+
+  // Sync state from URL query on initial load and back/forward navigation
   useEffect(() => {
     if (!router.isReady) return;
-    const q = router.query;
-    if (q.category && typeof q.category === "string" && q.category !== category) {
-      setCategory(q.category);
-    }
-    if (q.network && typeof q.network === "string" && q.network !== network) {
-      setNetwork(q.network);
-    }
-    setFilters((prev) => {
-      const nextGenre = typeof q.genre === "string" ? q.genre : "all";
-      const nextCountry = typeof q.country === "string" ? q.country : "all";
-      const nextYear = typeof q.year === "string" ? q.year : "all";
-      const nextService = typeof q.service === "string" ? q.service : "all";
-      const nextLanguage = typeof q.language === "string" ? q.language : "all";
-      const nextRating = typeof q.rating === "string" ? q.rating : "all";
-      if (
-        prev.genre === nextGenre &&
-        prev.country === nextCountry &&
-        prev.year === nextYear &&
-        prev.service === nextService &&
-        prev.language === nextLanguage &&
-        prev.rating === nextRating
-      ) {
-        return prev;
-      }
-      return {
-        genre: nextGenre,
-        country: nextCountry,
-        year: nextYear,
-        service: nextService,
-        language: nextLanguage,
-        rating: nextRating,
-      };
+    const parsed = parseBrowseQuery(router.query, {
+      defaultCategory: "trending",
+      validCategories: VALID_CATEGORIES,
+      filterKeys: FILTER_KEYS,
+      extraDefaults: EXTRA_DEFAULTS,
     });
-    isInitialMount.current = false;
+    setCategory((prev) => (prev === parsed.category ? prev : parsed.category));
+    setNetwork((prev) => (prev === parsed.extra.network ? prev : parsed.extra.network));
+    setFilters((prev) => {
+      const same = FILTER_KEYS.every((k) => prev[k] === parsed.filters[k]);
+      return same ? prev : parsed.filters;
+    });
   }, [router.isReady, router.query]);
 
   // 1. Fetch featured hero banner series from TMDB API
   useEffect(() => {
     let active = true;
-    fetch("/api/tmdb/discover?category=trending&type=tv")
+    const controller = new AbortController();
+    fetch("/api/tmdb/discover?category=trending&type=tv", { signal: controller.signal })
       .then((r) => (r.ok ? r.json() : []))
       .then((data) => {
-        if (active && Array.isArray(data) && data.length > 0) {
+        if (!active) return;
+        if (Array.isArray(data) && data.length > 0) {
           setHeroItems(data.slice(0, 5));
-          setHeroLoading(false);
         }
+        setHeroLoading(false);
       })
       .catch(() => {
         if (active) setHeroLoading(false);
@@ -163,19 +165,22 @@ export default function Series() {
 
     return () => {
       active = false;
+      controller.abort();
     };
-  }, []);
+  }, [retryCount]);
 
   // 2. Fetch Top 10 series from TMDB API
   useEffect(() => {
     let active = true;
-    fetch("/api/tmdb/discover?category=top&type=tv")
+    const controller = new AbortController();
+    fetch("/api/tmdb/discover?category=top&type=tv", { signal: controller.signal })
       .then((r) => (r.ok ? r.json() : []))
       .then((data) => {
-        if (active && Array.isArray(data) && data.length > 0) {
+        if (!active) return;
+        if (Array.isArray(data) && data.length > 0) {
           setTopSeries(data.slice(0, 10));
-          setTopLoading(false);
         }
+        setTopLoading(false);
       })
       .catch(() => {
         if (active) setTopLoading(false);
@@ -183,13 +188,22 @@ export default function Series() {
 
     return () => {
       active = false;
+      controller.abort();
     };
-  }, []);
+  }, [retryCount]);
 
-  // 3. Fetch catalog series (Page 1) whenever category, network, or filters change
+  // 3. Fetch catalog series (Page 1) after router isReady whenever category, network, or filters change
   useEffect(() => {
+    if (!router.isReady) return;
+
     let active = true;
+    const controller = new AbortController();
+    pageAbortRef.current?.abort();
+    pageAbortRef.current = null;
+    loadingMoreRef.current = false;
+
     setSeriesLoading(true);
+    setSeriesError(false);
     setLoadingMore(false);
     setPage(1);
     setHasMore(true);
@@ -217,34 +231,49 @@ export default function Series() {
       params.set("network", network);
     }
 
-    fetch(`/api/tmdb/discover?${params.toString()}`)
-      .then((r) => (r.ok ? r.json() : []))
+    fetch(`/api/tmdb/discover?${params.toString()}`, { signal: controller.signal })
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
       .then((data) => {
         if (!active) return;
         const newItems = Array.isArray(data) ? data : [];
+        itemsRef.current = newItems;
         setSeriesList(newItems);
         setSeriesLoading(false);
+        setSeriesError(false);
         if (newItems.length < 10) {
           setHasMore(false);
         }
       })
-      .catch(() => {
-        if (!active) return;
+      .catch((err) => {
+        if (!active || err?.name === "AbortError") return;
+        itemsRef.current = [];
         setSeriesList([]);
         setSeriesLoading(false);
+        setSeriesError(true);
         setHasMore(false);
       });
 
     return () => {
       active = false;
+      controller.abort();
+      pageAbortRef.current?.abort();
     };
-  }, [category, network, filters]);
+  }, [router.isReady, category, network, filters, retryCount]);
 
   // 4. Load next page for infinite scroll
   const loadMore = useCallback(() => {
-    if (seriesLoading || loadingMore || !hasMore) return;
+    if (seriesLoading || loadingMoreRef.current || !hasMore || page >= 500) return;
+
+    loadingMoreRef.current = true;
     setLoadingMore(true);
     const nextPage = page + 1;
+
+    const controller = new AbortController();
+    pageAbortRef.current?.abort();
+    pageAbortRef.current = controller;
 
     const catMap = {
       trending: "trending",
@@ -269,38 +298,39 @@ export default function Series() {
       params.set("network", network);
     }
 
-    fetch(`/api/tmdb/discover?${params.toString()}`)
-      .then((r) => (r.ok ? r.json() : []))
+    fetch(`/api/tmdb/discover?${params.toString()}`, { signal: controller.signal })
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
       .then((data) => {
         const newItems = Array.isArray(data) ? data : [];
         if (newItems.length === 0) {
           setHasMore(false);
+          loadingMoreRef.current = false;
           setLoadingMore(false);
           return;
         }
 
-        let addedCount = 0;
-        setSeriesList((prev) => {
-          const seen = new Set(prev.map((t) => String(t.id || t.tmdbId)));
-          const distinct = newItems.filter((t) => !seen.has(String(t.id || t.tmdbId)));
-          addedCount = distinct.length;
-          if (distinct.length === 0) {
-            return prev;
-          }
-          return [...prev, ...distinct];
-        });
-
+        const { items: merged, addedCount } = mergeUniqueMediaPage(itemsRef.current, newItems);
+        itemsRef.current = merged;
+        setSeriesList(merged);
         setPage(nextPage);
-        if (newItems.length < 10 || addedCount === 0) {
+
+        if (nextPage >= 500 || newItems.length < 10 || addedCount === 0) {
           setHasMore(false);
         }
+        loadingMoreRef.current = false;
         setLoadingMore(false);
       })
-      .catch(() => {
+      .catch((err) => {
+        loadingMoreRef.current = false;
         setLoadingMore(false);
-        setHasMore(false);
+        if (err?.name !== "AbortError") {
+          setHasMore(false);
+        }
       });
-  }, [seriesLoading, loadingMore, hasMore, page, category, network, filters]);
+  }, [seriesLoading, hasMore, page, category, network, filters]);
 
   // 5. Infinite scroll observer
   useEffect(() => {
@@ -336,46 +366,65 @@ export default function Series() {
     };
   }, []);
 
-  const updateUrl = (newCat, newNet, newFilters) => {
-    const next = {};
-    if (newCat && newCat !== "trending") next.category = newCat;
-    if (newNet && newNet !== "all") next.network = newNet;
-    for (const [k, v] of Object.entries(newFilters)) {
-      if (v && v !== "all") next[k] = v;
-    }
-    router.replace({ pathname: "/series", query: next }, undefined, { shallow: true });
-    if (!isInitialMount.current && gridRef.current) {
+  const scrollToGrid = () => {
+    if (gridRef.current && typeof window !== "undefined") {
       const top = gridRef.current.getBoundingClientRect().top + window.scrollY - 80;
       window.scrollTo({ top, behavior: "smooth" });
     }
   };
 
+  const updateUrl = (newCat, newNet, newFilters) => {
+    const next = buildBrowseQuery(
+      { category: newCat, filters: newFilters, extra: { network: newNet } },
+      { defaultCategory: "trending", extraDefaults: EXTRA_DEFAULTS }
+    );
+    router.replace({ pathname: "/series", query: next }, undefined, { shallow: true });
+    scrollToGrid();
+  };
+
   const handleCategoryChange = (val) => {
+    setShuffleSeed(0);
     setCategory(val);
     updateUrl(val, network, filters);
   };
 
   const handleNetworkChange = (val) => {
+    setShuffleSeed(0);
     setNetwork(val);
     updateUrl(category, val, filters);
   };
 
   const handleFilterChange = (key, val) => {
+    setShuffleSeed(0);
     const nextFilters = { ...filters, [key]: val };
     setFilters(nextFilters);
     updateUrl(category, network, nextFilters);
+  };
+
+  const handleResetFilters = () => {
+    setShuffleSeed(0);
+    setCategory("trending");
+    setNetwork("all");
+    setFilters(DEFAULT_FILTERS);
+    updateUrl("trending", "all", DEFAULT_FILTERS);
   };
 
   const handleShuffle = () => {
     setShuffleSeed((s) => s + 1);
   };
 
+  const activeFilterCount = useMemo(
+    () =>
+      countActiveFilters(
+        { category, filters, extra: { network } },
+        { defaultCategory: "trending", extraDefaults: EXTRA_DEFAULTS }
+      ),
+    [category, filters, network]
+  );
+
   const displayedSeries = useMemo(() => {
     if (!seriesList || seriesList.length === 0) return [];
-    if (shuffleSeed > 0) {
-      return [...seriesList].sort(() => Math.sin(shuffleSeed * 9999 + 1) - 0.5);
-    }
-    return seriesList;
+    return shuffleSeed > 0 ? seededShuffle(seriesList, shuffleSeed) : seriesList;
   }, [seriesList, shuffleSeed]);
 
   return (
@@ -407,6 +456,8 @@ export default function Series() {
           onFilterChange={handleFilterChange}
           filterOptions={filterOptions}
           onShuffle={handleShuffle}
+          activeFilterCount={activeFilterCount}
+          onReset={handleResetFilters}
         />
 
         <div style={{ marginBottom: 24, marginTop: 16 }}>
@@ -420,6 +471,17 @@ export default function Series() {
 
         {seriesLoading ? (
           <SkeletonGrid count={15} wide={true} />
+        ) : seriesError ? (
+          <Empty
+            title={isOffline ? "You appear to be offline" : "Couldn't load series"}
+            text={
+              isOffline
+                ? "Reconnect to the internet to browse TV series."
+                : "There was a problem loading series from TMDB. Please try again."
+            }
+            actionLabel="Try again"
+            onAction={() => setRetryCount((c) => c + 1)}
+          />
         ) : displayedSeries.length > 0 ? (
           <>
             <TitleGrid items={displayedSeries} wide={true} />
@@ -442,7 +504,7 @@ export default function Series() {
                       display: "flex",
                       alignItems: "center",
                       gap: "10px",
-                      color: "rgba(255, 255, 255, 0.6)",
+                      color: "rgba(255, 255, 255, 0.65)",
                       fontSize: "14px",
                       fontWeight: 500,
                     }}
@@ -454,7 +516,7 @@ export default function Series() {
                         border: "2px solid rgba(255, 255, 255, 0.2)",
                         borderTopColor: "#ffffff",
                         borderRadius: "50%",
-                        animation: "spin 0.8s linear infinite",
+                        animation: "vSpin 0.8s linear infinite",
                         display: "inline-block",
                       }}
                     />
@@ -467,7 +529,9 @@ export default function Series() {
         ) : (
           <Empty
             title="No series found"
-            text="No TV series match your selected TMDB filters. Try another genre or year."
+            text="No TV series match your selected filters. Try another network, genre or year."
+            actionLabel={activeFilterCount > 0 ? "Reset filters" : undefined}
+            onAction={activeFilterCount > 0 ? handleResetFilters : undefined}
           />
         )}
       </section>

@@ -17,6 +17,7 @@ export default [
   },
   ...nextCoreWebVitals,
   {
+    files: ["**/*.{js,jsx,mjs,ts,tsx,mts,cts}"],
     rules: {
       "react-hooks/refs": "warn",
       "react-hooks/set-state-in-effect": "warn",

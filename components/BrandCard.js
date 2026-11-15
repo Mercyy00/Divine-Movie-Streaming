@@ -24,11 +24,13 @@ function hexToRgba(hex, alpha = 0.25) {
  * Unified dark-glass brand card with centered logo, hover glow and fallback.
  */
 export default function BrandCard({ item, param = "service", href }) {
-  const [hasError, setHasError] = useState(false);
+  const [failedSrc, setFailedSrc] = useState(null);
   const targetHref = href || `/discover?${param}=${encodeURIComponent(item.id)}`;
   const logoSrc = getBrandLogoUrl(item.id || item.name);
-  const glow = hexToRgba(item.brandColor || item.bg, 0.25);
+  const tint = hexToRgba(item.brandColor || item.bg, 0.14);
+  const glow = hexToRgba(item.brandColor || item.bg, 0.3);
   const scale = item.logoScale || 1.0;
+  const hasError = Boolean(!logoSrc || failedSrc === logoSrc);
 
   return (
     <Link
@@ -36,14 +38,17 @@ export default function BrandCard({ item, param = "service", href }) {
       className={styles.card}
       data-brand={item.id}
       style={{
+        "--brand-tint": tint,
         "--brand-glow": glow,
         "--logo-scale": scale,
       }}
       aria-label={item.name}
     >
+      <span className={styles.ambientGlow} aria-hidden="true" />
       <div className={styles.logoArea}>
         <div className={styles.logoBox}>
-          {!hasError && logoSrc ? (
+          {!hasError ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
             <img
               src={logoSrc}
               alt=""
@@ -53,7 +58,7 @@ export default function BrandCard({ item, param = "service", href }) {
               height="56"
               loading="lazy"
               decoding="async"
-              onError={() => setHasError(true)}
+              onError={() => setFailedSrc(logoSrc)}
             />
           ) : (
             <span className={styles.wordmarkFallback}>{item.name}</span>

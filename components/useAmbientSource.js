@@ -12,6 +12,7 @@ export function useAmbientSource({ videoEl = null, anchorRef = null, showToast =
   const [isCapturing, setIsCapturing] = useState(false);
   const [captureVideo, setCaptureVideo] = useState(null);
   const streamRef = useRef(null);
+  const captureVideoRef = useRef(null);
 
   const stopCapture = useCallback(() => {
     if (streamRef.current) {
@@ -20,15 +21,17 @@ export function useAmbientSource({ videoEl = null, anchorRef = null, showToast =
       } catch {}
       streamRef.current = null;
     }
-    if (captureVideo) {
+    const videoNode = captureVideoRef.current;
+    if (videoNode) {
       try {
-        captureVideo.pause();
-        captureVideo.srcObject = null;
+        videoNode.pause();
+        videoNode.srcObject = null;
       } catch {}
+      captureVideoRef.current = null;
       setCaptureVideo(null);
     }
     setIsCapturing(false);
-  }, [captureVideo]);
+  }, []);
 
   const startCapture = useCallback(async () => {
     if (typeof window === "undefined" || !navigator?.mediaDevices?.getDisplayMedia) {
@@ -62,6 +65,7 @@ export function useAmbientSource({ videoEl = null, anchorRef = null, showToast =
       }
 
       streamRef.current = stream;
+      captureVideoRef.current = video;
       setCaptureVideo(video);
       setIsCapturing(true);
       showToast?.("Live scene ambient sync enabled");
@@ -84,17 +88,12 @@ export function useAmbientSource({ videoEl = null, anchorRef = null, showToast =
     }
   }, [isCapturing, startCapture, stopCapture, showToast]);
 
-  // Clean up media tracks on unmount
+  // Clean up media tracks and detached capture video element on unmount
   useEffect(() => {
     return () => {
-      if (streamRef.current) {
-        try {
-          streamRef.current.getTracks().forEach((track) => track.stop());
-        } catch {}
-        streamRef.current = null;
-      }
+      stopCapture();
     };
-  }, []);
+  }, [stopCapture]);
 
   // Compute live crop rectangle for the player stage inside the captured tab
   const getCropRect = useCallback(() => {

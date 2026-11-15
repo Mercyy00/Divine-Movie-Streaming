@@ -1,6 +1,6 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, Fragment } from "react";
 import Link from "next/link";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Play, ChevronLeft, ChevronRight } from "lucide-react";
 import Art from "./Art";
 import { RatingRing, CertBadge, Dot } from "./Meta";
@@ -65,21 +65,21 @@ const backdropVariants = {
     opacity: 1,
     scale: 1,
     transition: {
-      duration: 0.85,
+      duration: 0.68,
       ease: [0.22, 1, 0.36, 1],
     },
   },
   exit: {
     opacity: 0,
     transition: {
-      duration: 0.5,
+      duration: 0.45,
       ease: [0.22, 1, 0.36, 1],
     },
   },
 };
 
-function Wordmark({ title, isPerformance }) {
-  const [logoFailed, setLogoFailed] = useState(false);
+function Wordmark({ title, disableMotion }) {
+  const [failedLogoSrc, setFailedLogoSrc] = useState(null);
   const titleStr =
     typeof title?.title === "string"
       ? title.title
@@ -89,9 +89,10 @@ function Wordmark({ title, isPerformance }) {
 
   const words = titleStr ? titleStr.toUpperCase().split(" ") : [];
   const stack = words.length <= 3 && title?.type === "movie";
+  const showLogo = Boolean(title?.logo && failedLogoSrc !== title.logo);
 
-  if (isPerformance) {
-    if (title?.logo && !logoFailed) {
+  if (disableMotion) {
+    if (showLogo) {
       return (
         <h1 className={styles.logoWrap}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -99,22 +100,21 @@ function Wordmark({ title, isPerformance }) {
             src={title.logo}
             alt={titleStr}
             className={styles.logoImg}
-            onError={() => setLogoFailed(true)}
+            referrerPolicy="no-referrer"
+            onError={() => setFailedLogoSrc(title.logo)}
           />
-          <span style={{ position: "absolute", width: 1, height: 1, padding: 0, margin: -1, overflow: "hidden", clip: "rect(0, 0, 0, 0)", border: 0 }}>
-            {titleStr}
-          </span>
+          <span className="srOnly">{titleStr}</span>
         </h1>
       );
     }
     return (
       <h1 className={`${styles.mark} ${stack ? styles.markStack : styles.markWide}`} aria-label={titleStr}>
-        {stack ? words.map((w, i) => <span key={i}>{w}</span>) : (titleStr ? titleStr.toUpperCase() : "")}
+        {stack ? words.map((w, idx) => <span key={idx}>{w}</span>) : (titleStr ? titleStr.toUpperCase() : "")}
       </h1>
     );
   }
 
-  if (title?.logo && !logoFailed) {
+  if (showLogo) {
     return (
       <motion.h1 variants={childVariants} className={styles.logoWrap}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -122,18 +122,17 @@ function Wordmark({ title, isPerformance }) {
           src={title.logo}
           alt={titleStr}
           className={styles.logoImg}
-          onError={() => setLogoFailed(true)}
+          referrerPolicy="no-referrer"
+          onError={() => setFailedLogoSrc(title.logo)}
         />
-        <span style={{ position: "absolute", width: 1, height: 1, padding: 0, margin: -1, overflow: "hidden", clip: "rect(0, 0, 0, 0)", border: 0 }}>
-          {titleStr}
-        </span>
+        <span className="srOnly">{titleStr}</span>
       </motion.h1>
     );
   }
 
   return (
     <motion.h1 variants={childVariants} className={`${styles.mark} ${stack ? styles.markStack : styles.markWide}`} aria-label={titleStr}>
-      {stack ? words.map((w, i) => <span key={i}>{w}</span>) : (titleStr ? titleStr.toUpperCase() : "")}
+      {stack ? words.map((w, idx) => <span key={idx}>{w}</span>) : (titleStr ? titleStr.toUpperCase() : "")}
     </motion.h1>
   );
 }
@@ -144,21 +143,63 @@ export default function HeroBanner({ items = [], interval = 8000 }) {
   const [hover, setHover] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [settings] = useSettings();
+  const prefersReducedMotion = useReducedMotion();
   const isPerformance =
     settings?.themeMode === "performance" || settings?.theme === "performance";
+  const disableMotion = isPerformance || Boolean(prefersReducedMotion);
   const paused = hover || isFocused || settings.autoplay === false || settings.autoplayPreviews === false;
   const n = validItems.length;
-  const go = useCallback((next) => setI(((next % n) + n) % n), [n]);
+  const activeIdx = n > 0 ? ((i % n) + n) % n : 0;
+  const go = useCallback((next) => {
+    if (n <= 0) return;
+    setI(((next % n) + n) % n);
+  }, [n]);
 
   useEffect(() => {
     if (paused || n < 2) return;
     const id = setTimeout(() => setI((x) => (x + 1) % n), interval);
     return () => clearTimeout(id);
-  }, [i, paused, n, interval]);
+  }, [activeIdx, paused, n, interval]);
 
   if (n === 0) return null;
 
-  const t = validItems[i];
+  const t = validItems[activeIdx];
+  const runtime = runtimeLabel(t);
+  const certClean = t?.cert ? String(t.cert).trim() : "";
+  const hasRating = typeof t?.rating === "number" ? t.rating > 0 : Number(t?.rating) > 0;
+  const qualityLabel = t?.quality && String(t.quality).trim() ? String(t.quality).trim() : "";
+
+  const metaItems = [
+    hasRating ? { key: "rating", node: <RatingRing value={t.rating} size={38} /> } : null,
+    t?.year ? { key: "year", node: <span>{t.year}</span> } : null,
+    runtime ? { key: "runtime", node: <span>{runtime}</span> } : null,
+    certClean ? { key: "cert", node: <CertBadge cert={certClean} /> } : null,
+    qualityLabel ? { key: "quality", node: <span>{qualityLabel}</span> } : null,
+  ].filter(Boolean);
+
+  const overviewText =
+    t?.overview && t.overview !== "No synopsis available." ? t.overview : "";
+
+  const renderMetaRow = () => {
+    if (metaItems.length === 0) return null;
+    return metaItems.map((entry, idx) => (
+      <Fragment key={entry.key}>
+        {idx > 0 && <Dot />}
+        {entry.node}
+      </Fragment>
+    ));
+  };
+
+  const handleHeroKeyDown = (e) => {
+    if (n < 2) return;
+    if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      go(activeIdx - 1);
+    } else if (e.key === "ArrowRight") {
+      e.preventDefault();
+      go(activeIdx + 1);
+    }
+  };
 
   return (
     <section
@@ -169,16 +210,17 @@ export default function HeroBanner({ items = [], interval = 8000 }) {
       onMouseLeave={() => setHover(false)}
       onFocusCapture={() => setIsFocused(true)}
       onBlurCapture={() => setIsFocused(false)}
+      onKeyDown={handleHeroKeyDown}
     >
       <div className={styles.stage}>
-        {isPerformance ? (
-          <div key={t.id ?? i} className={styles.backdrop}>
+        {disableMotion ? (
+          <div key={t.id ?? activeIdx} className={styles.backdrop}>
             <Art title={t} variant="backdrop" className={styles.art} priority />
           </div>
         ) : (
           <AnimatePresence mode="popLayout">
             <motion.div
-              key={t.id ?? i}
+              key={t.id ?? activeIdx}
               className={styles.backdrop}
               variants={backdropVariants}
               initial="initial"
@@ -194,21 +236,11 @@ export default function HeroBanner({ items = [], interval = 8000 }) {
       </div>
 
       <div className={styles.content}>
-        {isPerformance ? (
-          <div key={t.id ?? i} className={styles.copy}>
-            <Wordmark title={t} isPerformance={true} />
-            <div className={styles.meta}>
-              <RatingRing value={t.rating} size={38} />
-              <Dot />
-              <span>{t.year}</span>
-              <Dot />
-              <span>{runtimeLabel(t)}</span>
-              <Dot />
-              <CertBadge cert={t.cert} />
-              <Dot />
-              <span>HD</span>
-            </div>
-            <p className={styles.overview}>{t.overview}</p>
+        {disableMotion ? (
+          <div key={t.id ?? activeIdx} className={styles.copy}>
+            <Wordmark title={t} disableMotion={true} />
+            {metaItems.length > 0 && <div className={styles.meta}>{renderMetaRow()}</div>}
+            {overviewText && <p className={styles.overview}>{overviewText}</p>}
             <div className={styles.actions}>
               <Link
                 href={t.type === "movie" ? `/watch/${t.id}` : `/watch/${t.id}?season=1&episode=1`}
@@ -217,10 +249,7 @@ export default function HeroBanner({ items = [], interval = 8000 }) {
                 <Play size={16} fill="currentColor" stroke="none" />
                 <span>Play</span>
               </Link>
-              <Link
-                href={`/title/${t.id}`}
-                className={styles.detailsBtn}
-              >
+              <Link href={`/title/${t.id}`} className={styles.detailsBtn}>
                 <span>Details</span>
               </Link>
             </div>
@@ -228,28 +257,24 @@ export default function HeroBanner({ items = [], interval = 8000 }) {
         ) : (
           <AnimatePresence mode="wait">
             <motion.div
-              key={t.id ?? i}
+              key={t.id ?? activeIdx}
               className={styles.copy}
               variants={copyVariants}
               initial="initial"
               animate="animate"
               exit="exit"
             >
-              <Wordmark title={t} isPerformance={false} />
-              <motion.div variants={childVariants} className={styles.meta}>
-                <RatingRing value={t.rating} size={38} />
-                <Dot />
-                <span>{t.year}</span>
-                <Dot />
-                <span>{runtimeLabel(t)}</span>
-                <Dot />
-                <CertBadge cert={t.cert} />
-                <Dot />
-                <span>HD</span>
-              </motion.div>
-              <motion.p variants={childVariants} className={styles.overview}>
-                {t.overview}
-              </motion.p>
+              <Wordmark title={t} disableMotion={false} />
+              {metaItems.length > 0 && (
+                <motion.div variants={childVariants} className={styles.meta}>
+                  {renderMetaRow()}
+                </motion.div>
+              )}
+              {overviewText && (
+                <motion.p variants={childVariants} className={styles.overview}>
+                  {overviewText}
+                </motion.p>
+              )}
               <motion.div variants={childVariants} className={styles.actions}>
                 <Link
                   href={t.type === "movie" ? `/watch/${t.id}` : `/watch/${t.id}?season=1&episode=1`}
@@ -258,10 +283,7 @@ export default function HeroBanner({ items = [], interval = 8000 }) {
                   <Play size={16} fill="currentColor" stroke="none" />
                   <span>Play</span>
                 </Link>
-                <Link
-                  href={`/title/${t.id}`}
-                  className={styles.detailsBtn}
-                >
+                <Link href={`/title/${t.id}`} className={styles.detailsBtn}>
                   <span>Details</span>
                 </Link>
               </motion.div>
@@ -270,27 +292,39 @@ export default function HeroBanner({ items = [], interval = 8000 }) {
         )}
       </div>
 
-      <div className={styles.pager}>
-        <button type="button" className={styles.arrow} onClick={() => go(i - 1)} aria-label="Previous title">
-          <ChevronLeft size={18} strokeWidth={2.4} />
-        </button>
-        <div className={styles.dots} role="tablist" aria-label="Choose title">
-          {validItems.map((it, idx) => (
-            <button
-              key={it.id ?? idx}
-              type="button"
-              role="tab"
-              aria-selected={idx === i}
-              aria-label={it.title}
-              className={`${styles.dot} ${idx === i ? styles.dotOn : ""}`}
-              onClick={() => go(idx)}
-            />
-          ))}
+      {n > 1 && (
+        <div className={styles.pager}>
+          <button
+            type="button"
+            className={styles.arrow}
+            onClick={() => go(activeIdx - 1)}
+            aria-label="Previous title"
+          >
+            <ChevronLeft size={18} strokeWidth={2.4} />
+          </button>
+          <div className={styles.dots} role="tablist" aria-label="Choose featured title">
+            {validItems.map((it, idx) => (
+              <button
+                key={it.id ?? idx}
+                type="button"
+                role="tab"
+                aria-selected={idx === activeIdx}
+                aria-label={it.title || `Slide ${idx + 1}`}
+                className={`${styles.dot} ${idx === activeIdx ? styles.dotOn : ""}`}
+                onClick={() => go(idx)}
+              />
+            ))}
+          </div>
+          <button
+            type="button"
+            className={styles.arrow}
+            onClick={() => go(activeIdx + 1)}
+            aria-label="Next title"
+          >
+            <ChevronRight size={18} strokeWidth={2.4} />
+          </button>
         </div>
-        <button type="button" className={styles.arrow} onClick={() => go(i + 1)} aria-label="Next title">
-          <ChevronRight size={18} strokeWidth={2.4} />
-        </button>
-      </div>
+      )}
     </section>
   );
 }

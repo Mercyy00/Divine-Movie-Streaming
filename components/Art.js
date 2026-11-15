@@ -103,8 +103,8 @@ function Motif({ kind, w, h, h1, h2 }) {
 
 export default function Art({ title: rawTitle, variant = "poster", showTitle = true, className, style, priority = false }) {
   const uid = useId().replace(/:/g, "");
-  const [triedAlt, setTriedAlt] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [altForUrl, setAltForUrl] = useState(null);
+  const [failedForUrl, setFailedForUrl] = useState(null);
 
   if (!rawTitle) return null;
 
@@ -116,7 +116,9 @@ export default function Art({ title: rawTitle, variant = "poster", showTitle = t
     ? card.poster || card.backdrop
     : card.backdrop || card.poster;
   const altUrl = poster ? card.backdrop : card.poster;
+  const triedAlt = Boolean(primaryUrl && altForUrl === primaryUrl);
   const activeUrl = triedAlt ? altUrl : primaryUrl;
+  const failed = Boolean(activeUrl && failedForUrl === activeUrl);
 
   if (activeUrl && !failed) {
     return (
@@ -126,11 +128,12 @@ export default function Art({ title: rawTitle, variant = "poster", showTitle = t
         alt={titleText || "Media title"}
         loading={priority ? "eager" : "lazy"}
         decoding="async"
+        referrerPolicy="no-referrer"
         onError={() => {
           if (!triedAlt && altUrl && altUrl !== primaryUrl) {
-            setTriedAlt(true);
+            setAltForUrl(primaryUrl);
           } else {
-            setFailed(true);
+            setFailedForUrl(activeUrl);
           }
         }}
         className={className}

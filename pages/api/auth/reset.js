@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import { prisma } from "../../../lib/prisma";
 import { applyApiGuard } from "../../../lib/api-guard";
+import { hashResetToken } from "../../../lib/tokenHash";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -20,12 +21,13 @@ export default async function handler(req, res) {
   }
 
   const cleanEmail = String(email).trim().toLowerCase();
+  const tokenHash = hashResetToken(String(token).trim());
 
   try {
     const record = await prisma.verificationToken.findFirst({
       where: {
         identifier: `reset:${cleanEmail}`,
-        token,
+        token: tokenHash,
       },
     });
 

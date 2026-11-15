@@ -9,6 +9,8 @@ export default function MediaRow({ title, href, menu, menus, tabs, pager, childr
   const [edge, setEdge] = useState({ start: true, end: false });
   const [openMenu, setOpenMenu] = useState(null);
   const menuRefs = useRef([]);
+  const triggerRefs = useRef([]);
+  const listRefs = useRef([]);
   const rowMenus = Array.isArray(menus) ? menus : menu ? [menu] : [];
 
   const isDragging = useRef(false);
@@ -36,10 +38,24 @@ export default function MediaRow({ title, href, menu, menus, tabs, pager, childr
     const close = (e) => {
       if (!menuRefs.current.some((element) => element?.contains(e.target))) setOpenMenu(null);
     };
-    const esc = (e) => e.key === "Escape" && setOpenMenu(null);
+    const esc = (e) => {
+      if (e.key === "Escape") {
+        const prevIdx = openMenu;
+        setOpenMenu(null);
+        triggerRefs.current[prevIdx]?.focus?.();
+      }
+    };
     document.addEventListener("pointerdown", close);
     document.addEventListener("keydown", esc);
+    const raf = requestAnimationFrame(() => {
+      const listEl = listRefs.current[openMenu];
+      if (!listEl) return;
+      const activeOpt = listEl.querySelector('[role="option"][aria-selected="true"] button');
+      const firstOpt = listEl.querySelector("button");
+      (activeOpt || firstOpt)?.focus?.();
+    });
     return () => {
+      cancelAnimationFrame(raf);
       document.removeEventListener("pointerdown", close);
       document.removeEventListener("keydown", esc);
     };
@@ -115,6 +131,27 @@ export default function MediaRow({ title, href, menu, menus, tabs, pager, childr
     }
   };
 
+  const handleMenuListKeyDown = (e, index) => {
+    const items = Array.from(listRefs.current[index]?.querySelectorAll("button") || []);
+    if (!items.length) return;
+    const currentIdx = items.indexOf(document.activeElement);
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      items[(currentIdx + 1 + items.length) % items.length].focus();
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      items[(currentIdx - 1 + items.length) % items.length].focus();
+    } else if (e.key === "Home") {
+      e.preventDefault();
+      items[0].focus();
+    } else if (e.key === "End") {
+      e.preventDefault();
+      items[items.length - 1].focus();
+    } else if (e.key === "Tab") {
+      setOpenMenu(null);
+    }
+  };
+
   return (
     <section className={`${styles.section} ${className}`}>
       <header className={styles.head}>
@@ -128,31 +165,44 @@ export default function MediaRow({ title, href, menu, menus, tabs, pager, childr
             title
           )}
         </h2>
-        {rowMenus.map((menu, index) => (
+        {rowMenus.map((rowMenu, index) => (
           <div className={styles.menuWrap} key={index} ref={(element) => { menuRefs.current[index] = element; }}>
             <button
+              ref={(element) => { triggerRefs.current[index] = element; }}
               type="button"
               className={`${styles.menuTrigger} chip`}
               aria-haspopup="listbox"
               aria-expanded={openMenu === index}
               onClick={() => setOpenMenu((current) => current === index ? null : index)}
+              onKeyDown={(e) => {
+                if (e.key === "ArrowDown" && openMenu !== index) {
+                  e.preventDefault();
+                  setOpenMenu(index);
+                }
+              }}
             >
-              {menu.label || menu.options.find((o) => o.value === menu.value)?.label}
+              {rowMenu.label || rowMenu.options.find((o) => o.value === rowMenu.value)?.label}
               <ChevronDown size={16} strokeWidth={2.6} />
             </button>
             {openMenu === index && (
-              <ul className={styles.menu} role="listbox">
-                {menu.options.map((o) => (
-                  <li key={o.value} role="option" aria-selected={o.value === menu.value}>
+              <ul
+                ref={(element) => { listRefs.current[index] = element; }}
+                className={styles.menu}
+                role="listbox"
+                onKeyDown={(e) => handleMenuListKeyDown(e, index)}
+              >
+                {rowMenu.options.map((o) => (
+                  <li key={o.value} role="option" aria-selected={o.value === rowMenu.value}>
                     <button
                       type="button"
                       onClick={() => {
-                        menu.onChange(o.value);
+                        rowMenu.onChange(o.value);
                         setOpenMenu(null);
+                        triggerRefs.current[index]?.focus?.();
                       }}
                     >
                       {o.label}
-                      {o.value === menu.value && <Check size={15} strokeWidth={2.6} />}
+                      {o.value === rowMenu.value && <Check size={15} strokeWidth={2.6} />}
                     </button>
                   </li>
                 ))}

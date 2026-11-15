@@ -17,10 +17,23 @@ export default async function handler(req, res) {
         prisma.userSettings.findUnique({ where: { userId: user.id } }),
       ]);
       return res.status(200).json({
-        history: history.map((h) => ({
-          id: h.titleId, title: h.titleData, progress: h.progress, timeLeft: h.timeLeft || undefined,
-          at: h.watchedAt.getTime(), ...(h.season ? { season: h.season, episode: h.episode } : {}),
-        })),
+        history: history.map((h) => {
+          const rawTitle = h.titleData && typeof h.titleData === "object" ? { ...h.titleData } : {};
+          const playback = rawTitle._playback && typeof rawTitle._playback === "object" ? rawTitle._playback : {};
+          delete rawTitle._playback;
+          return {
+            id: h.titleId,
+            title: rawTitle,
+            progress: h.progress,
+            timeLeft: h.timeLeft || undefined,
+            ...(Number.isFinite(playback.currentTime) ? { currentTime: playback.currentTime } : {}),
+            ...(Number.isFinite(playback.duration) ? { duration: playback.duration } : {}),
+            ...(Number.isFinite(playback.secondsLeft) ? { secondsLeft: playback.secondsLeft } : {}),
+            ...(playback.tmdbId ? { tmdbId: playback.tmdbId } : {}),
+            at: h.watchedAt.getTime(),
+            ...(h.season ? { season: h.season, episode: h.episode } : {}),
+          };
+        }),
         watchlist: watchlist.map((w) => ({ id: w.titleId, title: w.titleData })),
         extras: settings?.data || {},
       });
@@ -30,12 +43,27 @@ export default async function handler(req, res) {
       const { history, watchlist, extras } = req.body || {};
       const ops = [];
       if (Array.isArray(history)) {
-        const rows = history.slice(0, MAX_ITEMS).filter((h) => h && typeof h.id === "string").map((h) => ({
-          userId: user.id, titleId: h.id.slice(0, 200), titleData: h.title || {}, progress: Number(h.progress) || 0,
-          season: Number(h.season) || 0, episode: Number(h.episode) || 0,
-          timeLeft: typeof h.timeLeft === "string" ? h.timeLeft.slice(0, 40) : null,
-          watchedAt: new Date(Number(h.at) || Date.now()),
-        }));
+        const rows = history
+          .slice(0, MAX_ITEMS)
+          .filter((h) => h && typeof h.id === "string")
+          .map((h) => {
+            const baseTitle = h.title && typeof h.title === "object" ? { ...h.title } : {};
+            const playback = {};
+            if (Number.isFinite(Number(h.currentTime))) playback.currentTime = Math.floor(Number(h.currentTime));
+            if (Number.isFinite(Number(h.duration))) playback.duration = Math.floor(Number(h.duration));
+            if (Number.isFinite(Number(h.secondsLeft))) playback.secondsLeft = Math.floor(Number(h.secondsLeft));
+            if (h.tmdbId) playback.tmdbId = h.tmdbId;
+            return {
+              userId: user.id,
+              titleId: h.id.slice(0, 200),
+              titleData: Object.keys(playback).length ? { ...baseTitle, _playback: playback } : baseTitle,
+              progress: Number(h.progress) || 0,
+              season: Number(h.season) || 0,
+              episode: Number(h.episode) || 0,
+              timeLeft: typeof h.timeLeft === "string" ? h.timeLeft.slice(0, 40) : null,
+              watchedAt: new Date(Number(h.at) || Date.now()),
+            };
+          });
         ops.push(prisma.watchHistory.deleteMany({ where: { userId: user.id } }));
         if (rows.length) ops.push(prisma.watchHistory.createMany({ data: rows, skipDuplicates: true }));
       }

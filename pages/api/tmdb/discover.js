@@ -11,6 +11,61 @@ import {
 import { fetchAniListDiscover } from "../../../lib/anilist.js";
 import { applyApiGuard, clampInt, handleApiError } from "../../../lib/api-guard.js";
 
+import { getAllCardTitles } from "../../../lib/data.server.js";
+
+function discoverFromCatalog({ validType, category, genre, service, studio, year, country, language, rating, sort_by, page }) {
+  let pool = getAllCardTitles();
+  if (validType === "movie") pool = pool.filter((t) => t.type === "movie");
+  else if (validType === "tv") pool = pool.filter((t) => t.type === "series" || t.type === "anime");
+
+  if (category === "upcoming") {
+    const up = pool.filter((t) => t.status === "upcoming");
+    if (up.length) pool = up;
+  } else if (category === "airing_today" || category === "on_the_air") {
+    const air = pool.filter((t) => t.status === "airing" || t.type === "series");
+    if (air.length) pool = air;
+  }
+
+  if (genre && genre !== "all") {
+    const gLower = String(genre).toLowerCase();
+    pool = pool.filter((t) => (t.genres || []).some((g) => g.toLowerCase() === gLower));
+  }
+  if (service && service !== "all") {
+    pool = pool.filter((t) => t.service === service);
+  }
+  if (studio && studio !== "all") {
+    pool = pool.filter((t) => t.studio === studio);
+  }
+  if (language && language !== "all") {
+    const lLower = String(language).toLowerCase();
+    pool = pool.filter((t) => (t.language || "").toLowerCase() === lLower);
+  }
+  if (country && country !== "all") {
+    const cUpper = String(country).toUpperCase();
+    pool = pool.filter((t) => (t.country || "").toUpperCase() === cUpper);
+  }
+  if (year && year !== "all") {
+    if (/^\d{4}$/.test(year)) pool = pool.filter((t) => String(t.year) === year);
+    else if (year === "2020s") pool = pool.filter((t) => Number(t.year) >= 2020);
+    else if (year === "2010s") pool = pool.filter((t) => Number(t.year) >= 2010 && Number(t.year) <= 2019);
+    else if (year === "Earlier") pool = pool.filter((t) => Number(t.year) < 2010);
+  }
+  if (rating && rating !== "all") {
+    const minR = Number(rating);
+    if (!Number.isNaN(minR)) pool = pool.filter((t) => (Number(t.rating) || 0) >= minR);
+  }
+
+  if (category === "top" || sort_by === "vote_average.desc") {
+    pool = [...pool].sort((a, b) => (Number(b.rating) || 0) - (Number(a.rating) || 0));
+  } else if (sort_by === "primary_release_date.desc") {
+    pool = [...pool].sort((a, b) => (Number(b.year) || 0) - (Number(a.year) || 0));
+  }
+
+  const perPage = 20;
+  const start = (page - 1) * perPage;
+  return pool.slice(start, start + perPage);
+}
+
 export default async function handler(req, res) {
   const guarded = await applyApiGuard(req, res, { cacheSeconds: 1800 });
   if (!guarded) {
@@ -64,6 +119,23 @@ export default async function handler(req, res) {
         page: validPage,
       });
       return res.status(200).json(anime || []);
+    }
+
+    if (!process.env.TMDB_API_KEY) {
+      const fallback = discoverFromCatalog({
+        validType,
+        category,
+        genre,
+        service,
+        studio,
+        year,
+        country,
+        language,
+        rating,
+        sort_by,
+        page: validPage,
+      });
+      return res.status(200).json(fallback);
     }
 
     let items = [];

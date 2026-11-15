@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import Link from "next/link";
 import {
   Play,
   Pause,
@@ -18,14 +19,16 @@ import {
 import useVideoPlayback from "./useVideoPlayback";
 import { joinRoom } from "../lib/watchParty";
 import { useSettings } from "../lib/store";
+import {
+  formatResumeTime,
+  pickNextAvailableServer,
+  getServerOrigin,
+  getAllowedServerOrigins,
+  isTrustedIframeMessage,
+} from "../lib/watchHelpers";
 import styles from "../styles/Watch.module.css";
 
-export const formatTime = (seconds) => {
-  const time = Math.max(0, Math.floor(Number.isFinite(seconds) ? seconds : 0));
-  const hours = Math.floor(time / 3600);
-  const minutes = Math.floor((time % 3600) / 60);
-  return `${hours ? `${hours}:${String(minutes).padStart(2, "0")}` : minutes}:${String(time % 60).padStart(2, "0")}`;
-};
+export const formatTime = (seconds) => formatResumeTime(seconds);
 
 export default function VideoPlayer({
   servers = [],
@@ -34,6 +37,8 @@ export default function VideoPlayer({
   initialProgress = 0,
   initialProgressSeconds = 0,
   onProgress,
+  onServerChange,
+  onResumeNotice,
   nextEpisode,
   onNext,
   onEpisodeSelect,
@@ -45,7 +50,7 @@ export default function VideoPlayer({
   recommendations = [],
   isTheater = false,
   onToggleTheater,
-  children,
+  embedTimeoutMs = 12000,
 }) {
   const stageRef = useRef(null);
   const iframeRef = useRef(null);
@@ -53,6 +58,7 @@ export default function VideoPlayer({
   const attempts = useRef(new Set());
   const requestedServer = useRef(defaultServer);
   const currentDurationRef = useRef(0);
+  const [settings] = useSettings();
   const [activeId, setActiveId] = useState(defaultServer);
   const [failedServers, setFailedServers] = useState([]);
   const [retry, setRetry] = useState(0);
@@ -64,7 +70,7 @@ export default function VideoPlayer({
   const [selectedSubLanguage, setSelectedSubLanguage] = useState("off");
   const [showRecsDrawer, setShowRecsDrawer] = useState(false);
   const [showResumePrompt, setShowResumePrompt] = useState(
-    initialProgress > 0.02 && initialProgress < 0.9
+    settings.resumePlayback !== false && initialProgress > 0.02 && initialProgress < 0.95
   );
   const [mobileSheet, setMobileSheet] = useState({
     isOpen: false,
@@ -74,6 +80,51 @@ export default function VideoPlayer({
   });
 
   const activeServer = servers.find((server) => server.id === activeId);
+  const alternateServer = pickNextAvailableServer(servers, activeId, failedServers);
+  const anyOtherOnlineServer = alternateServer || pickNextAvailableServer(servers, activeId, []);
+  const activeServerOrigin = getServerOrigin(activeServer);
+  const allowedServerOrigins = useMemo(() => getAllowedServerOrigins(servers), [servers]);
+  const [embedStatus, setEmbedStatus] = useState({
+    key: "",
+    loaded: false,
+    timedOut: false,
+  });
+  const currentEmbedKey =
+    activeServer?.type === "embed" && activeServer?.url
+      ? `${activeServer.id}:${retry}:${activeServer.url}`
+      : "";
+  const isEmbedLoaded = Boolean(currentEmbedKey) && embedStatus.key === currentEmbedKey && embedStatus.loaded;
+  const isEmbedTimedOut = Boolean(currentEmbedKey) && embedStatus.key === currentEmbedKey && embedStatus.timedOut;
+
+  const postToActiveFrame = useCallback(
+    (payload, preferredFrame = null) => {
+      if (!activeServerOrigin) return false;
+      const frame =
+        preferredFrame ||
+        iframeRef.current ||
+        (typeof document !== "undefined"
+          ? document.getElementById("player") ||
+            document.getElementById("vidbolt-player") ||
+            document.getElementById("embed-player")
+          : null);
+      if (!frame?.contentWindow) return false;
+      frame.contentWindow.postMessage(payload, activeServerOrigin);
+      return true;
+    },
+    [activeServerOrigin]
+  );
+
+  const switchToServer = useCallback(
+    (srv) => {
+      if (!srv) return;
+      requestedServer.current = srv.id;
+      setEmbedStatus({ key: "", loaded: false, timedOut: false });
+      setActiveId(srv.id);
+      setSwitchNotice(`Switched to ${srv.name}.`);
+      onServerChange?.(srv.id);
+    },
+    [onServerChange]
+  );
 
   const handlePlaybackProgress = useCallback((time, duration) => {
     if (onProgress) onProgress(time, duration);
@@ -85,45 +136,74 @@ export default function VideoPlayer({
   const player = useVideoPlayback({
     streamUrl: activeServer?.type === "embed" ? null : activeServer?.url,
     retry,
-    initialProgress: showResumePrompt ? 0 : initialProgress,
+    initialProgress: showResumePrompt || settings.resumePlayback === false ? 0 : initialProgress,
     onProgress: handlePlaybackProgress,
     onFailure: () => {
       attempts.current.add(activeId);
       setFailedServers([...attempts.current]);
-      const next = servers.find((server) => server.status === "online" && !attempts.current.has(server.id));
+      const next = pickNextAvailableServer(servers, activeId, attempts.current);
       if (next) {
+        requestedServer.current = next.id;
         setSwitchNotice(`${activeServer?.name || "Server"} is unavailable. Switched to ${next.name}.`);
         setActiveId(next.id);
+        onServerChange?.(next.id);
       }
       return Boolean(next);
     },
   });
 
   const handleIframeLoad = () => {
+    if (currentEmbedKey) {
+      setEmbedStatus({ key: currentEmbedKey, loaded: true, timedOut: false });
+    }
     if ((activeServer?.provider === "VidRift" || activeServer?.id === "poseidon") && initialProgressSeconds > 10) {
       try {
-        iframeRef.current?.contentWindow?.postMessage(
-          { type: "vidrift:resume", currentTime: Math.floor(initialProgressSeconds) },
-          "*"
-        );
+        postToActiveFrame({ type: "vidrift:resume", currentTime: Math.floor(initialProgressSeconds) });
       } catch {}
     }
     if ((activeServer?.provider === "VidQueen" || activeServer?.id === "hera") && initialProgressSeconds > 10) {
       try {
         const frame = iframeRef.current || (typeof document !== "undefined" ? document.getElementById("player") : null);
-        frame?.contentWindow?.postMessage(
-          { type: "SET_TIME", time: Math.floor(initialProgressSeconds) },
-          "https://vidqueen.st"
-        );
+        postToActiveFrame({ type: "SET_TIME", time: Math.floor(initialProgressSeconds) }, frame);
         setTimeout(() => {
-          frame?.contentWindow?.postMessage(
-            { type: "SET_TIME", time: Math.floor(initialProgressSeconds) },
-            "https://vidqueen.st"
-          );
+          postToActiveFrame({ type: "SET_TIME", time: Math.floor(initialProgressSeconds) }, frame);
         }, 1200);
       } catch {}
     }
   };
+
+  // Auto-failover if embed iframe fails to load within ~12s
+  useEffect(() => {
+    if (activeServer?.type !== "embed" || !currentEmbedKey || isEmbedLoaded || isEmbedTimedOut) {
+      return;
+    }
+    const ms = Number(embedTimeoutMs) > 0 ? Number(embedTimeoutMs) : 12000;
+    const timeoutId = setTimeout(() => {
+      attempts.current.add(activeId);
+      setFailedServers([...attempts.current]);
+      const next = pickNextAvailableServer(servers, activeId, attempts.current);
+      if (next) {
+        requestedServer.current = next.id;
+        setSwitchNotice(`${activeServer?.name || "Server"} timed out. Switched to ${next.name}.`);
+        setEmbedStatus({ key: "", loaded: false, timedOut: false });
+        setActiveId(next.id);
+        onServerChange?.(next.id);
+      } else {
+        setEmbedStatus({ key: currentEmbedKey, loaded: false, timedOut: true });
+      }
+    }, ms);
+    return () => clearTimeout(timeoutId);
+  }, [
+    activeServer?.type,
+    activeServer?.name,
+    activeId,
+    currentEmbedKey,
+    isEmbedLoaded,
+    isEmbedTimedOut,
+    servers,
+    onServerChange,
+    embedTimeoutMs,
+  ]);
 
   // Expose seekTo helper for VidQueen
   useEffect(() => {
@@ -131,26 +211,19 @@ export default function VideoPlayer({
     window.seekTo = (seconds) => {
       const sec = Number(seconds);
       if (!Number.isFinite(sec)) return;
-      const frame = iframeRef.current || document.getElementById("player") || document.getElementById("embed-player");
-      frame?.contentWindow?.postMessage(
-        { type: "SET_TIME", time: sec },
-        "https://vidqueen.st"
-      );
+      postToActiveFrame({ type: "SET_TIME", time: sec });
     };
     return () => {
       try {
         delete window.seekTo;
       } catch {}
     };
-  }, []);
+  }, [postToActiveFrame]);
 
   const handleMobileOptionSelect = (row) => {
     try {
       const playerEl = iframeRef.current || (typeof document !== "undefined" ? document.getElementById("vidbolt-player") : null);
-      playerEl?.contentWindow?.postMessage(
-        { type: "mobile-option", option: row.option, value: row.value },
-        "https://vidbolt.xyz"
-      );
+      postToActiveFrame({ type: "mobile-option", option: row.option, value: row.value }, playerEl);
     } catch (err) {
       console.error("Failed to post mobile-option:", err);
     }
@@ -180,6 +253,17 @@ export default function VideoPlayer({
     if (activeServer?.type !== "embed") return;
 
     const handleMessage = (event) => {
+      const frame =
+        iframeRef.current ||
+        (typeof document !== "undefined"
+          ? document.getElementById("player") ||
+            document.getElementById("vidbolt-player") ||
+            document.getElementById("embed-player")
+          : null);
+      if (!isTrustedIframeMessage(event, frame?.contentWindow, allowedServerOrigins)) {
+        return;
+      }
+
       let data = event.data;
       if (typeof data === "string") {
         try {
@@ -192,13 +276,10 @@ export default function VideoPlayer({
 
       // 0. VidQueen (Hera) event handling
       if (event.origin === "https://vidqueen.st") {
-        const frame = iframeRef.current || (typeof document !== "undefined" ? document.getElementById("player") : null);
-        if (frame && event.source !== frame.contentWindow) return;
-
         const msg = data || {};
 
         if (msg.type === "PLAYER_EVENT" && msg.data) {
-          const { event: playerEvent, currentTime, duration, tmdbId } = msg.data;
+          const { event: playerEvent, currentTime, duration } = msg.data;
           if (playerEvent === "fullscreen-enter" || playerEvent === "fullscreen-exit") {
             // Fullscreen events handled within embed
           } else {
@@ -230,7 +311,7 @@ export default function VideoPlayer({
 
       // 1. Cinezo (Ares) event handling (WATCH_PROGRESS: { mediaId, eventType, currentTime, duration })
       if (data.type === "WATCH_PROGRESS" && data.data) {
-        if (event.origin && !event.origin.includes("cinezo.live")) return;
+        if (event.origin !== "https://player.cinezo.live") return;
 
         const { mediaId, eventType, currentTime, duration } = data.data;
         const timeNum = Number(currentTime);
@@ -356,7 +437,7 @@ export default function VideoPlayer({
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [activeServer?.type, initialProgressSeconds, handlePlaybackProgress, onWatched, onNext, onEpisodeSelect, onExit]);
+  }, [activeServer?.type, allowedServerOrigins, initialProgressSeconds, handlePlaybackProgress, onWatched, onNext, onEpisodeSelect, onExit]);
 
   const wake = () => {
     setChrome(true);
@@ -375,12 +456,16 @@ export default function VideoPlayer({
     return () => clearTimeout(hideTimer.current);
   }, [player.playing]);
 
-  const [settings] = useSettings();
   const isSeries = title.type !== "movie";
   const showSkipIntro = isSeries && player.ready && player.currentTime >= 15 && player.currentTime < 90;
   const nearEnd = Boolean(nextEpisode) && player.duration > 0 && player.currentTime / player.duration >= 0.95;
   const [countdown, setCountdown] = useState(10);
   const [nextCancelled, setNextCancelled] = useState(false);
+
+  useEffect(() => {
+    setNextCancelled(false);
+    setCountdown(10);
+  }, [title?.id, nextEpisode?.season, nextEpisode?.episode]);
 
   useEffect(() => {
     if (!defaultServer || requestedServer.current === defaultServer) return;
@@ -394,7 +479,7 @@ export default function VideoPlayer({
   }, [defaultServer]);
 
   useEffect(() => {
-    if (!nearEnd || nextCancelled) {
+    if (!nearEnd || nextCancelled || settings.autoplayNext === false) {
       setCountdown(10);
       return;
     }
@@ -404,7 +489,7 @@ export default function VideoPlayer({
     }
     const t = setTimeout(() => setCountdown((c) => c - 1), 1000);
     return () => clearTimeout(t);
-  }, [nearEnd, nextCancelled, countdown, onNext]);
+  }, [nearEnd, nextCancelled, countdown, onNext, settings.autoplayNext]);
 
   // Watch party: broadcast local play/pause/seek, apply remote ones.
   useEffect(() => {
@@ -464,9 +549,19 @@ export default function VideoPlayer({
     setShowSettingsMenu(false);
   };
 
-  // Keyboard controls
+  // Keyboard controls + Escape for player menus/drawers
   useEffect(() => {
     const handleKey = (e) => {
+      if (e.key === "Escape") {
+        if (showSettingsMenu || showSubtitlesMenu || showRecsDrawer || mobileSheet.isOpen) {
+          setShowSettingsMenu(false);
+          setShowSubtitlesMenu(false);
+          setShowRecsDrawer(false);
+          setMobileSheet((prev) => ({ ...prev, isOpen: false }));
+          return;
+        }
+      }
+
       const tag = (e.target?.tagName || document.activeElement?.tagName || "").toUpperCase();
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || tag === "BUTTON" || tag === "A") return;
 
@@ -476,7 +571,7 @@ export default function VideoPlayer({
           const frame = iframeRef.current || (typeof document !== "undefined" ? document.getElementById("player") : null);
           const cur = Number(player.currentTime) || 0;
           const next = Math.max(0, cur - skipSec);
-          frame?.contentWindow?.postMessage({ type: "SET_TIME", time: next }, "https://vidqueen.st");
+          postToActiveFrame({ type: "SET_TIME", time: next }, frame);
         } else {
           player.seek(Math.max(0, player.currentTime - skipSec));
         }
@@ -488,7 +583,7 @@ export default function VideoPlayer({
           const cur = Number(player.currentTime) || 0;
           const dur = Number(player.duration) || Infinity;
           const next = Math.min(dur, cur + skipSec);
-          frame?.contentWindow?.postMessage({ type: "SET_TIME", time: next }, "https://vidqueen.st");
+          postToActiveFrame({ type: "SET_TIME", time: next }, frame);
         } else {
           player.seek(Math.min(player.duration || 0, player.currentTime + skipSec));
         }
@@ -517,7 +612,7 @@ export default function VideoPlayer({
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [player, skipSec]);
+  }, [player, skipSec, activeServer?.id, activeServer?.provider, postToActiveFrame, showSettingsMenu, showSubtitlesMenu, showRecsDrawer, mobileSheet.isOpen]);
 
   // Touch gesture handling
   const touchStart = useRef({ x: 0, y: 0, time: 0 });
@@ -569,6 +664,7 @@ export default function VideoPlayer({
   const retryPlayback = () => {
     attempts.current.clear();
     setFailedServers([]);
+    setEmbedStatus({ key: "", loaded: false, timedOut: false });
     setSwitchNotice("");
     setActiveId(defaultServer);
     setRetry((value) => value + 1);
@@ -578,13 +674,13 @@ export default function VideoPlayer({
     setShowResumePrompt(false);
     if (activeServer?.id === "hera" || activeServer?.provider === "VidQueen") {
       const frame = iframeRef.current || (typeof document !== "undefined" ? document.getElementById("player") : null);
-      frame?.contentWindow?.postMessage(
-        { type: "SET_TIME", time: Math.floor(initialProgressSeconds) },
-        "https://vidqueen.st"
-      );
+      postToActiveFrame({ type: "SET_TIME", time: Math.floor(initialProgressSeconds) }, frame);
     }
     if (player.duration) {
       player.seek(initialProgress * player.duration);
+    }
+    if (initialProgressSeconds > 10) {
+      onResumeNotice?.(`Resumed from ${formatResumeTime(initialProgressSeconds)}`);
     }
     player.togglePlay();
   };
@@ -593,10 +689,7 @@ export default function VideoPlayer({
     setShowResumePrompt(false);
     if (activeServer?.id === "hera" || activeServer?.provider === "VidQueen") {
       const frame = iframeRef.current || (typeof document !== "undefined" ? document.getElementById("player") : null);
-      frame?.contentWindow?.postMessage(
-        { type: "SET_TIME", time: 0 },
-        "https://vidqueen.st"
-      );
+      postToActiveFrame({ type: "SET_TIME", time: 0 }, frame);
     }
     player.seek(0);
     player.togglePlay();
@@ -623,7 +716,7 @@ export default function VideoPlayer({
                 ? "vidbolt-player"
                 : "embed-player"
             }
-            key={activeServer?.id || "embed-player"}
+            key={`${activeServer?.id || "embed-player"}-${retry}`}
             src={
               activeServer?.url && activeServer.url.includes("play4u.org") && !activeServer.url.includes("embed=")
                 ? `${activeServer.url}${activeServer.url.includes("?") ? "&" : "?"}embed=1`
@@ -641,13 +734,87 @@ export default function VideoPlayer({
               border: 0,
             }}
             frameBorder="0"
-            allowFullScreen
             allow="autoplay; encrypted-media; fullscreen; picture-in-picture; clipboard-write"
             referrerPolicy="origin-when-cross-origin"
             loading="lazy"
             className={styles.embedIframe}
             onLoad={handleIframeLoad}
           />
+          {isEmbedTimedOut && (
+            <div className={styles.status} role="alert" style={{ background: "rgba(7, 8, 13, 0.86)", inset: 0 }}>
+              <p>{activeServer?.name || "This server"} timed out after 12 seconds.</p>
+              <div className={styles.unavailableActions}>
+                {anyOtherOnlineServer && (
+                  <button
+                    type="button"
+                    className="chip"
+                    onClick={() => switchToServer(anyOtherOnlineServer)}
+                  >
+                    Try another server ({anyOtherOnlineServer.name})
+                  </button>
+                )}
+                <button type="button" className="chip" onClick={retryPlayback}>
+                  Retry
+                </button>
+              </div>
+            </div>
+          )}
+          {!isEmbedTimedOut && switchNotice && (
+            <div
+              role="status"
+              style={{
+                position: "absolute",
+                top: 14,
+                right: 14,
+                zIndex: 8,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "7px 12px",
+                borderRadius: 999,
+                background: "rgba(18, 20, 26, 0.85)",
+                border: "1px solid rgba(255, 255, 255, 0.16)",
+                color: "#fff",
+                fontSize: 12,
+                fontWeight: 600,
+              }}
+            >
+              <span>{switchNotice}</span>
+              {anyOtherOnlineServer && (
+                <button
+                  type="button"
+                  onClick={() => switchToServer(anyOtherOnlineServer)}
+                  style={{
+                    background: "rgba(255, 255, 255, 0.16)",
+                    color: "#fff",
+                    border: "1px solid rgba(255, 255, 255, 0.24)",
+                    borderRadius: 999,
+                    padding: "3px 9px",
+                    fontSize: 11,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  Try another server
+                </button>
+              )}
+              <button
+                type="button"
+                aria-label="Dismiss server notice"
+                onClick={() => setSwitchNotice("")}
+                style={{
+                  background: "transparent",
+                  color: "rgba(255,255,255,0.7)",
+                  border: 0,
+                  cursor: "pointer",
+                  fontSize: 12,
+                  padding: "0 2px",
+                }}
+              >
+                ✕
+              </button>
+            </div>
+          )}
           {/* Embed servers (VidRift, Vidy, vidstuck, vidbolt, etc.) have their own native back button & title.
               Overlaying our back button causes duplicate text and visual collisions. */}
           {mobileSheet.isOpen && (
@@ -732,7 +899,11 @@ export default function VideoPlayer({
           {/* Resume Prompt Modal */}
           {showResumePrompt && (
             <div className={styles.resumePromptCard} role="dialog" aria-label="Resume playback">
-              <p className={styles.resumePromptTitle}>Resume from where you left off?</p>
+              <p className={styles.resumePromptTitle}>
+                {initialProgressSeconds > 10
+                  ? `Resume from ${formatResumeTime(initialProgressSeconds)}?`
+                  : "Resume from where you left off?"}
+              </p>
               <div className={styles.resumePromptActions}>
                 <button type="button" className={styles.resumeBtnPrimary} onClick={handleResume}>
                   Resume
@@ -757,9 +928,20 @@ export default function VideoPlayer({
           {player.error ? (
             <div className={styles.status} role="alert">
               <p>{player.error}</p>
-              <button type="button" className="chip" onClick={retryPlayback}>
-                Retry playback
-              </button>
+              <div className={styles.unavailableActions}>
+                <button type="button" className="chip" onClick={retryPlayback}>
+                  Retry playback
+                </button>
+                {alternateServer && (
+                  <button
+                    type="button"
+                    className="chip"
+                    onClick={() => switchToServer(alternateServer)}
+                  >
+                    Try another server ({alternateServer.name})
+                  </button>
+                )}
+              </div>
             </div>
           ) : player.buffering ? (
             <div className={styles.status} role="status">
@@ -771,7 +953,7 @@ export default function VideoPlayer({
                   width: 68,
                   height: "auto",
                   display: "block",
-                  filter: "drop-shadow(0 4px 16px rgba(235, 94, 40, 0.5))",
+                  filter: "drop-shadow(0 4px 16px rgba(255, 255, 255, 0.25))",
                 }}
               />
               <p>{player.ready ? "Buffering…" : "Loading stream…"}</p>
@@ -789,10 +971,14 @@ export default function VideoPlayer({
             </button>
           )}
 
-          {/* Next Episode Countdown */}
+          {/* Next Episode Card */}
           {nearEnd && !nextCancelled && (
             <div className={styles.nextCard} role="status">
-              <span>Next episode in {countdown}s</span>
+              <span>
+                {settings.autoplayNext === false
+                  ? `Up next: S${nextEpisode.season} E${nextEpisode.episode}`
+                  : `Next episode in ${countdown}s`}
+              </span>
               <button type="button" className={styles.skipBtn} onClick={() => onNext?.()}>
                 Play now
               </button>
@@ -941,20 +1127,7 @@ export default function VideoPlayer({
                           </button>
                         ))
                       ) : (
-                        ["English", "Spanish", "French", "German", "Hindi"].map((lang) => (
-                          <button
-                            key={lang}
-                            type="button"
-                            className={`${styles.srvItem} ${selectedSubLanguage === lang.toLowerCase() ? styles.srvActive : ""}`}
-                            onClick={() => {
-                              setSelectedSubLanguage(lang.toLowerCase());
-                              setShowSubtitlesMenu(false);
-                            }}
-                          >
-                            <span>{lang}</span>
-                            {selectedSubLanguage === lang.toLowerCase() && <Check size={14} />}
-                          </button>
-                        ))
+                        <p className={styles.srvEmptyNote}>No subtitle tracks for this stream</p>
                       )}
                     </div>
                   )}
@@ -1010,6 +1183,28 @@ export default function VideoPlayer({
                         ))}
                       </div>
 
+                      {/* Audio Track Selector */}
+                      {player.audioTracks?.length > 1 && (
+                        <>
+                          <hr className={styles.srvDivider} />
+                          <span className={styles.srvMenuTitle}>Audio</span>
+                          {player.audioTracks.map((tr) => (
+                            <button
+                              key={tr.id}
+                              type="button"
+                              className={`${styles.srvItem} ${player.selectedAudioTrack === tr.id ? styles.srvActive : ""}`}
+                              onClick={() => {
+                                player.chooseAudioTrack?.(tr.id);
+                                setShowSettingsMenu(false);
+                              }}
+                            >
+                              <span>{tr.label}</span>
+                              {player.selectedAudioTrack === tr.id && <Check size={14} />}
+                            </button>
+                          ))}
+                        </>
+                      )}
+
                       {/* Quality Selector */}
                       {player.qualities?.length > 0 && (
                         <>
@@ -1051,16 +1246,15 @@ export default function VideoPlayer({
                               key={s.id}
                               type="button"
                               className={`${styles.srvItem} ${activeId === s.id ? styles.srvActive : ""}`}
-                              disabled={s.status !== "online" || failedServers.includes(s.id)}
+                              disabled={s.status !== "online"}
                               onClick={() => {
-                                setActiveId(s.id);
-                                setSwitchNotice("");
+                                switchToServer(s);
                                 setShowSettingsMenu(false);
                               }}
                             >
                               <span>{s.name}</span>
                               <span className={styles.srvBadge}>
-                                {s.status !== "online" ? "Offline" : failedServers.includes(s.id) ? "Error" : "Online"}
+                                {s.status !== "online" ? "Offline" : failedServers.includes(s.id) ? "Retry" : "Online"}
                               </span>
                             </button>
                           ))}
@@ -1098,7 +1292,7 @@ export default function VideoPlayer({
               <div>
                 <h4 className={styles.inPlayerDrawerTitle}>More like this</h4>
                 <p className={styles.inPlayerDrawerSub}>
-                  Similar cast, director & vibe for {title?.title || "current movie"}
+                  Similar cast, director & vibe for {title?.title || "current title"}
                 </p>
               </div>
               <button
@@ -1112,7 +1306,7 @@ export default function VideoPlayer({
             </div>
             <div className={styles.inPlayerCardsGrid}>
               {recommendations.map((rec) => (
-                <a
+                <Link
                   key={rec.id}
                   href={`/watch/${rec.id}`}
                   className={styles.inPlayerCard}
@@ -1125,6 +1319,7 @@ export default function VideoPlayer({
                       alt={rec.title}
                       className={styles.inPlayerCardImg}
                       loading="lazy"
+                      referrerPolicy="no-referrer"
                     />
                     {rec.matchReason && (
                       <span className={styles.inPlayerCardBadge}>{rec.matchReason}</span>
@@ -1137,7 +1332,7 @@ export default function VideoPlayer({
                       {rec.rating > 0 && <span>★ {rec.rating}</span>}
                     </div>
                   </div>
-                </a>
+                </Link>
               ))}
             </div>
           </div>

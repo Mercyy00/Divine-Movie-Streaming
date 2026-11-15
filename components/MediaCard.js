@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import { createPortal } from "react-dom";
 import { useToast } from "../lib/useToast";
 import {
@@ -32,6 +33,33 @@ import {
 } from "../lib/store";
 import styles from "./MediaCard.module.css";
 
+const MAX_LOGO_CACHE = 500;
+const logoFetchCache = new Map();
+
+function fetchCardLogoDeduped(url) {
+  if (logoFetchCache.has(url)) {
+    const cached = logoFetchCache.get(url);
+    return typeof cached === "string" || cached === null ? Promise.resolve(cached) : cached;
+  }
+  const pending = fetch(url)
+    .then((r) => (r.ok ? r.json() : null))
+    .then((data) => {
+      const logoUrl = data?.logo || null;
+      if (logoFetchCache.size >= MAX_LOGO_CACHE) {
+        const oldestKey = logoFetchCache.keys().next().value;
+        if (oldestKey !== undefined) logoFetchCache.delete(oldestKey);
+      }
+      logoFetchCache.set(url, logoUrl);
+      return logoUrl;
+    })
+    .catch(() => {
+      logoFetchCache.delete(url);
+      return null;
+    });
+  logoFetchCache.set(url, pending);
+  return pending;
+}
+
 export default function MediaCard({
   title: inputTitle,
   rank,
@@ -42,6 +70,7 @@ export default function MediaCard({
   badge,
   fluid = false,
 }) {
+  const router = useRouter();
   const title = useMemo(() => {
     if (!inputTitle) return {};
     if (typeof inputTitle === "string") return { id: inputTitle, title: inputTitle };
@@ -76,7 +105,7 @@ export default function MediaCard({
   const [menuPos, setMenuPos] = useState({ x: 0, y: 0 });
   const [showSubList, setShowSubList] = useState(false);
   const [toast, showToast] = useToast(2400);
-  const [logoFailed, setLogoFailed] = useState(false);
+  const [failedLogoUrl, setFailedLogoUrl] = useState(null);
   const [asyncLogo, setAsyncLogo] = useState(null);
 
   // 3-second hover preview state
@@ -89,10 +118,17 @@ export default function MediaCard({
   const hoverTimerRef = useRef(null);
   const closeTimerRef = useRef(null);
   const isHoveredRef = useRef(false);
+  const prefetchedIdRef = useRef(null);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  const prefetchTitleRoute = useCallback(() => {
+    if (!title?.id || prefetchedIdRef.current === title.id) return;
+    prefetchedIdRef.current = title.id;
+    router.prefetch(`/title/${title.id}`).catch(() => {});
+  }, [router, title?.id]);
 
   // Listen for preview-close broadcasts from peer cards
   useEffect(() => {
@@ -144,6 +180,7 @@ export default function MediaCard({
 
   // Hover timer triggers 3-second preview popup
   const handleMouseEnter = () => {
+    prefetchTitleRoute();
     if (typeof window !== "undefined" && window.matchMedia("(hover: none)").matches) {
       return;
     }
@@ -212,9 +249,12 @@ export default function MediaCard({
     }, 250);
   };
 
+  const activeLogo = title.logo || asyncLogo;
+  const logoFailed = Boolean(activeLogo && failedLogoUrl === activeLogo);
+
   // Lazily fetch logo if this is a wide card without a logo pre-attached
   useEffect(() => {
-    if (!wide || !title || title.logo || asyncLogo || logoFailed) return;
+    if (!wide || !title || title.logo || asyncLogo) return;
     const tid = title.tmdbId || (typeof title.id === "string" && title.id.match(/^\d+$/)?.[0]);
     const titleName = title.title || title.name;
     if (!tid && !titleName) return;
@@ -227,21 +267,16 @@ export default function MediaCard({
     if (tid && /^\d+$/.test(String(tid))) params.set("id", String(tid));
     if (titleName) params.set("title", titleName);
 
-    fetch(`/api/tmdb/logo?${params.toString()}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (active && data?.logo) {
-          setAsyncLogo(data.logo);
-        }
-      })
-      .catch(() => {});
+    fetchCardLogoDeduped(`/api/tmdb/logo?${params.toString()}`).then((logoUrl) => {
+      if (active && logoUrl) {
+        setAsyncLogo(logoUrl);
+      }
+    });
 
     return () => {
       active = false;
     };
-  }, [wide, title.logo, title.tmdbId, title.id, title.title, title.name, title.type, asyncLogo, logoFailed]);
-
-  const activeLogo = title.logo || asyncLogo;
+  }, [wide, title.logo, title.tmdbId, title.id, title.title, title.name, title.type, asyncLogo]);
 
   // Close context menu on outside events or when another card opens its menu
   useEffect(() => {
@@ -278,7 +313,108 @@ export default function MediaCard({
     };
   }, [openMenu, title?.id]);
 
-  if (!title) return null;
+  // 3-second hover preview metadata helpers (declared before conditional return)
+  const isAnime = title?.type === "anime";
+  const isSeries = title?.type === "series" || title?.type === "tv";
+  const seasonCount = (() => {
+    if (Array.isArray(title?.seasons)) {
+      return title.seasons.filter((s) => s && s.season_number !== 0).length || title.seasons.length || null;
+    }
+    if (typeof title?.seasons === "number") return title.seasons;
+    if (typeof title?.numberOfSeasons === "number") return title.numberOfSeasons;
+    if (typeof title?.number_of_seasons === "number") return title.number_of_seasons;
+    if (typeof title?.seasons === "string" && !isNaN(parseInt(title.seasons, 10))) {
+      return parseInt(title.seasons, 10);
+    }
+    return null;
+  })();
+
+  const displayYear = useMemo(() => {
+    if (title.year) return title.year;
+    const dateStr = title.release_date || title.first_air_date || title.releaseDate;
+    if (dateStr && typeof dateStr === "string") {
+      const y = parseInt(dateStr.slice(0, 4), 10);
+      if (!Number.isNaN(y)) return y;
+    }
+    return null;
+  }, [title.year, title.release_date, title.first_air_date, title.releaseDate]);
+
+  const formattedRuntime = useMemo(() => {
+    if (title.runtime) {
+      const mins = Number(title.runtime);
+      if (!Number.isNaN(mins) && mins > 0) {
+        const h = Math.floor(mins / 60);
+        const m = mins % 60;
+        return h > 0 ? `${h}h ${m}m` : `${m}m`;
+      }
+    }
+    if (isSeries && seasonCount) {
+      return `${seasonCount} ${seasonCount === 1 ? "Season" : "Seasons"}`;
+    }
+    if (isAnime && title.episodes) {
+      return `${title.episodes} Episodes`;
+    }
+    return null;
+  }, [title.runtime, isSeries, seasonCount, isAnime, title.episodes]);
+
+  const formattedCert = useMemo(() => {
+    const rawCert = (title.cert || title.certification || "").toUpperCase();
+    if (rawCert) {
+      if (rawCert === "R" || rawCert === "NC-17" || rawCert === "TV-MA" || rawCert === "18+") return "A";
+      if (rawCert === "PG-13" || rawCert === "TV-14" || rawCert === "16+") return "U/A 16+";
+      if (rawCert === "PG" || rawCert === "TV-PG" || rawCert === "13+") return "U/A 13+";
+      if (rawCert === "G" || rawCert === "TV-Y" || rawCert === "TV-G" || rawCert === "U") return "U";
+      return rawCert;
+    }
+    if (title.adult) return "A";
+    return null;
+  }, [title.cert, title.certification, title.adult]);
+
+  const formattedLanguages = useMemo(() => {
+    if (Array.isArray(title.spoken_languages) && title.spoken_languages.length > 1) {
+      return `${title.spoken_languages.length} Languages`;
+    }
+    if (Array.isArray(title.languages) && title.languages.length > 1) {
+      return `${title.languages.length} Languages`;
+    }
+    const orig = (title.original_language || "").toLowerCase();
+    const langMap = {
+      en: "English",
+      ja: "Japanese",
+      ko: "Korean",
+      hi: "Hindi",
+      es: "Spanish",
+      fr: "French",
+      de: "German",
+      zh: "Chinese",
+    };
+    return langMap[orig] || null;
+  }, [title.spoken_languages, title.languages, title.original_language]);
+
+  const primaryGenre = useMemo(() => {
+    if (Array.isArray(title.genres) && title.genres.length > 0) {
+      const g0 = title.genres[0];
+      return typeof g0 === "string" ? g0 : g0?.name || null;
+    }
+    return null;
+  }, [title.genres]);
+
+  const langBadgeText = useMemo(() => {
+    const orig = (title.original_language || "").toLowerCase();
+    const badgeMap = {
+      ja: "日本語",
+      ko: "한국어",
+      hi: "हिंदी",
+      ta: "தமிழ்",
+      te: "తెలుగు",
+      es: "Español",
+      fr: "Français",
+      en: "EN",
+    };
+    return badgeMap[orig] || null;
+  }, [title.original_language]);
+
+  if (!inputTitle) return null;
 
   const saved = inList(list, title.id);
   const inSchedule = (schedule || []).includes(title.id);
@@ -371,9 +507,9 @@ export default function MediaCard({
 
   // Custom list toggle
   const handleToggleCustomList = (cl) => {
-    toggleCustomListItem(setCustomLists, cl.id, title.id);
-    const inList = (cl.items || []).includes(title.id);
-    showToast(inList ? `Removed from "${cl.name}"` : `Added to "${cl.name}"`);
+    const isAlreadyInList = inList(cl.items, title.id);
+    toggleCustomListItem(setCustomLists, cl.id, title.id, title);
+    showToast(isAlreadyInList ? `Removed from "${cl.name}"` : `Added to "${cl.name}"`);
     setOpenMenu(false);
     setShowSubList(false);
   };
@@ -413,26 +549,9 @@ export default function MediaCard({
     }
   };
 
-  // Badge logic matching user screenshot & spec:
-  const isAnime = title?.type === "anime";
-  const isSeries = title?.type === "series" || title?.type === "tv";
-  const seasonCount = (() => {
-    if (Array.isArray(title?.seasons)) {
-      return title.seasons.filter((s) => s && s.season_number !== 0).length || title.seasons.length || null;
-    }
-    if (typeof title?.seasons === "number") return title.seasons;
-    if (typeof title?.numberOfSeasons === "number") return title.numberOfSeasons;
-    if (typeof title?.number_of_seasons === "number") return title.number_of_seasons;
-    if (typeof title?.seasons === "string" && !isNaN(parseInt(title.seasons, 10))) {
-      return parseInt(title.seasons, 10);
-    }
-    return null;
-  })();
-
   const activeBadge = !rank
     ? badge ||
       title?.badge ||
-      (title?.type === "movie" ? title?.quality : null) ||
       (isAnime
         ? title?.status === "airing"
           ? "SIMULCAST"
@@ -442,11 +561,12 @@ export default function MediaCard({
         : null)
     : null;
 
-  // Format rating: 1 decimal place (e.g. 7.3, 7.0, 8.5)
+  // Format rating: only display when positive numeric value exists
+  const numericRating = Number(title.rating);
   const displayRating =
-    typeof title.rating === "number"
-      ? Number(title.rating).toFixed(1)
-      : title.rating || null;
+    Number.isFinite(numericRating) && numericRating > 0
+      ? numericRating.toFixed(1)
+      : null;
 
   // Remaining time
   const formatTimeLeft = (val) => {
@@ -473,88 +593,33 @@ export default function MediaCard({
 
   const subMenuIsLeft = typeof window !== "undefined" && menuPos.x + 230 + 190 > window.innerWidth;
 
-  // 3-second hover preview metadata helpers
-  const displayYear = useMemo(() => {
-    if (title.year) return title.year;
-    const dateStr = title.release_date || title.first_air_date || title.releaseDate;
-    if (dateStr && typeof dateStr === "string") {
-      const y = parseInt(dateStr.slice(0, 4), 10);
-      if (!Number.isNaN(y)) return y;
-    }
-    return 2025;
-  }, [title.year, title.release_date, title.first_air_date, title.releaseDate]);
+  const subMetaItems = isContinueWatching
+    ? [
+        displayYear ? <span key="year" className={styles.year}>{displayYear}</span> : null,
+        remainingTime ? <span key="left" className={styles.timeLeft}>{remainingTime}</span> : null,
+      ].filter(Boolean)
+    : [
+        displayRating ? (
+          <span key="rating" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+            <span className={styles.star}>★</span>
+            <span className={styles.ratingVal}>{displayRating}</span>
+          </span>
+        ) : null,
+        displayYear ? <span key="year" className={styles.year}>{displayYear}</span> : null,
+        (isSeries || isAnime) && seasonCount ? (
+          <span key="seasons" className={styles.quality}>
+            {seasonCount} {Number(seasonCount) === 1 ? "Season" : "Seasons"}
+          </span>
+        ) : null,
+      ].filter(Boolean);
 
-  const formattedRuntime = useMemo(() => {
-    if (title.runtime) {
-      const mins = Number(title.runtime);
-      if (!Number.isNaN(mins) && mins > 0) {
-        const h = Math.floor(mins / 60);
-        const m = mins % 60;
-        return h > 0 ? `${h}h ${m}m` : `${m}m`;
-      }
-    }
-    if (isSeries) {
-      if (seasonCount) {
-        return `${seasonCount} ${seasonCount === 1 ? "Season" : "Seasons"}`;
-      }
-      return "1 Season";
-    }
-    if (isAnime) {
-      if (title.episodes) return `${title.episodes} Episodes`;
-      return "24m";
-    }
-    return "2h 1m";
-  }, [title.runtime, isSeries, seasonCount, isAnime, title.episodes]);
-
-  const formattedCert = useMemo(() => {
-    const rawCert = (title.cert || title.certification || "").toUpperCase();
-    if (rawCert) {
-      if (rawCert === "R" || rawCert === "NC-17" || rawCert === "TV-MA" || rawCert === "18+") return "A";
-      if (rawCert === "PG-13" || rawCert === "TV-14" || rawCert === "16+") return "U/A 16+";
-      if (rawCert === "PG" || rawCert === "TV-PG" || rawCert === "13+") return "U/A 13+";
-      if (rawCert === "G" || rawCert === "TV-Y" || rawCert === "TV-G" || rawCert === "U") return "U";
-      return rawCert;
-    }
-    if (title.adult) return "A";
-    const ratingNum = typeof title.rating === "number" ? title.rating : parseFloat(title.rating) || 7.0;
-    if (ratingNum >= 8.2) return "A";
-    if (ratingNum >= 7.0) return "U/A 16+";
-    return "U/A 13+";
-  }, [title.cert, title.certification, title.adult, title.rating]);
-
-  const formattedLanguages = useMemo(() => {
-    if (Array.isArray(title.spoken_languages) && title.spoken_languages.length > 1) {
-      return `${title.spoken_languages.length} Languages`;
-    }
-    if (Array.isArray(title.languages) && title.languages.length > 1) {
-      return `${title.languages.length} Languages`;
-    }
-    const orig = (title.original_language || "").toLowerCase();
-    if (orig === "hi") return "5 Languages";
-    if (orig === "ja") return "Japanese";
-    if (orig === "ko") return "Korean";
-    if (orig === "es") return "Spanish";
-    if (orig === "fr") return "French";
-    return "3 Languages";
-  }, [title.spoken_languages, title.languages, title.original_language]);
-
-  const primaryGenre = useMemo(() => {
-    if (Array.isArray(title.genres) && title.genres.length > 0) {
-      const g0 = title.genres[0];
-      return typeof g0 === "string" ? g0 : g0?.name || "Action";
-    }
-    return "Action";
-  }, [title.genres]);
-
-  const langBadgeText = useMemo(() => {
-    const orig = (title.original_language || "").toLowerCase();
-    if (orig === "ja") return "日本語 ∨";
-    if (orig === "ko") return "한국어 ∨";
-    if (orig === "ta") return "தமிழ் ∨";
-    if (orig === "te") return "తెలుగు ∨";
-    if (orig === "es") return "Español ∨";
-    return "हिंदी ∨";
-  }, [title.original_language]);
+  const popupMetaItems = [
+    displayYear ? { key: "year", node: <span>{displayYear}</span> } : null,
+    formattedCert ? { key: "cert", node: <span className={styles.popupCertBadge}>{formattedCert}</span> } : null,
+    formattedRuntime ? { key: "runtime", node: <span>{formattedRuntime}</span> } : null,
+    formattedLanguages ? { key: "lang", node: <span>{formattedLanguages}</span> } : null,
+    primaryGenre ? { key: "genre", node: <span className={styles.popupGenre}>{primaryGenre}</span> } : null,
+  ].filter(Boolean);
 
   return (
     <div
@@ -570,6 +635,7 @@ export default function MediaCard({
         href={`/title/${title.id}`}
         className={styles.link}
         aria-label={title.title}
+        onFocus={prefetchTitleRoute}
       >
         <span className={styles.art}>
           <Art
@@ -591,7 +657,8 @@ export default function MediaCard({
                   className={styles.tileLogo}
                   loading="lazy"
                   decoding="async"
-                  onError={() => setLogoFailed(true)}
+                  referrerPolicy="no-referrer"
+                  onError={() => setFailedLogoUrl(activeLogo)}
                 />
               ) : (
                 <span className={styles.tileTitleText}>
@@ -601,7 +668,7 @@ export default function MediaCard({
             </span>
           )}
 
-          {/* Top-left Notch Cutout (Rank, HD, Cam, New episode) */}
+          {/* Top-left Notch Cutout (Rank, badge, New episode) */}
           {rank ? (
             <span className={styles.notch}>
               <span className={styles.badgeRank}>{rank}</span>
@@ -638,38 +705,16 @@ export default function MediaCard({
             <span className={styles.name} title={title.title}>
               {title.title}
             </span>
-            <span className={styles.sub}>
-              {isContinueWatching ? (
-                <>
-                  {title.year && <span className={styles.year}>{title.year}</span>}
-                  {remainingTime && (
-                    <>
-                      <span className={styles.dot}>·</span>
-                      <span className={styles.timeLeft}>{remainingTime}</span>
-                    </>
-                  )}
-                </>
-              ) : (
-                <>
-                  {displayRating ? (
-                    <>
-                      <span className={styles.star}>★</span>
-                      <span className={styles.ratingVal}>{displayRating}</span>
-                      <span className={styles.dot}>·</span>
-                    </>
-                  ) : null}
-                  {title.year && <span className={styles.year}>{title.year}</span>}
-                  {(isSeries || isAnime) && seasonCount ? (
-                    <>
-                      <span className={styles.dot}>·</span>
-                      <span className={styles.quality}>
-                        {seasonCount} {Number(seasonCount) === 1 ? "Season" : "Seasons"}
-                      </span>
-                    </>
-                  ) : null}
-                </>
-              )}
-            </span>
+            {subMetaItems.length > 0 && (
+              <span className={styles.sub}>
+                {subMetaItems.map((node, idx) => (
+                  <span key={idx} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                    {idx > 0 && <span className={styles.dot}>·</span>}
+                    {node}
+                  </span>
+                ))}
+              </span>
+            )}
           </span>
         )}
       </Link>
@@ -789,18 +834,18 @@ export default function MediaCard({
                 <div className={styles.subMenuHead}>Add to list</div>
                 {customLists && customLists.length > 0 ? (
                   customLists.map((cl) => {
-                    const inList = (cl.items || []).includes(title.id);
+                    const isAlreadyInList = inList(cl.items, title.id);
                     return (
                       <button
                         key={cl.id}
                         type="button"
                         className={`${styles.subMenuItem} ${
-                          inList ? styles.subMenuItemActive : ""
+                          isAlreadyInList ? styles.subMenuItemActive : ""
                         }`}
                         onClick={() => handleToggleCustomList(cl)}
                       >
                         <span>{cl.name}</span>
-                        {inList && <Check size={14} strokeWidth={2.6} />}
+                        {isAlreadyInList && <Check size={14} strokeWidth={2.6} />}
                       </button>
                     );
                   })
@@ -871,7 +916,7 @@ export default function MediaCard({
               priority
             />
             <span className={styles.popupShade} />
-            <span className={styles.popupLangBadge}>{langBadgeText}</span>
+            {langBadgeText && <span className={styles.popupLangBadge}>{langBadgeText}</span>}
             <div className={styles.popupTitleWrap}>
               {activeLogo && !logoFailed ? (
                 /* eslint-disable-next-line @next/next/no-img-element */
@@ -879,7 +924,8 @@ export default function MediaCard({
                   src={activeLogo}
                   alt={title.title}
                   className={styles.popupLogo}
-                  onError={() => setLogoFailed(true)}
+                  referrerPolicy="no-referrer"
+                  onError={() => setFailedLogoUrl(activeLogo)}
                 />
               ) : (
                 <h3 className={styles.popupTitleText}>{title.title}</h3>
@@ -906,25 +952,22 @@ export default function MediaCard({
               </button>
             </div>
 
-            {/* Metadata row: Year • Cert • Duration/Seasons • Languages • Genre */}
-            <div className={styles.popupMetaRow}>
-              <span>{displayYear}</span>
-              <span className={styles.popupDot}>•</span>
-              <span className={styles.popupCertBadge}>{formattedCert}</span>
-              <span className={styles.popupDot}>•</span>
-              <span>{formattedRuntime}</span>
-              <span className={styles.popupDot}>•</span>
-              <span>{formattedLanguages}</span>
-              <span className={styles.popupDot}>•</span>
-              <span className={styles.popupGenre}>{primaryGenre}</span>
-            </div>
+            {/* Metadata row: only real fields */}
+            {popupMetaItems.length > 0 && (
+              <div className={styles.popupMetaRow}>
+                {popupMetaItems.map((item, idx) => (
+                  <span key={item.key} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                    {idx > 0 && <span className={styles.popupDot}>•</span>}
+                    {item.node}
+                  </span>
+                ))}
+              </div>
+            )}
 
             {/* Overview / Synopsis Paragraph */}
-            <p className={styles.popupOverview}>
-              {title.overview && title.overview !== "No synopsis available."
-                ? title.overview
-                : `Stream ${title.title} now in high definition on DIVINE.`}
-            </p>
+            {title.overview && title.overview !== "No synopsis available." && (
+              <p className={styles.popupOverview}>{title.overview}</p>
+            )}
           </div>
         </div>,
         document.body

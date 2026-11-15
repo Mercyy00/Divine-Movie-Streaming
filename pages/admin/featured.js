@@ -1,4 +1,6 @@
 import { useSession } from "next-auth/react";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "../../lib/auth";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Layout from "../../components/Layout";
@@ -17,10 +19,25 @@ import {
   ExternalLink,
 } from "lucide-react";
 
-export default function AdminFeaturedPage() {
+export async function getServerSideProps(context) {
+  const session = await getServerSession(context.req, context.res, authOptions);
+  if (!session || session.user?.role !== "ADMIN") {
+    context.res.statusCode = 403;
+    return {
+      props: {
+        authorized: false,
+        signedInEmail: session?.user?.email || null,
+        currentRole: session?.user?.role || null,
+      },
+    };
+  }
+  return { props: { authorized: true } };
+}
+
+export default function AdminFeaturedPage({ authorized = false, signedInEmail = null, currentRole = null }) {
   const { data: session, status } = useSession();
   const [featured, setFeatured] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(Boolean(authorized));
   const [toast, showToast] = useToast(2500);
 
   // Search to add new featured title
@@ -41,14 +58,23 @@ export default function AdminFeaturedPage() {
   };
 
   useEffect(() => {
-    if (status === "authenticated" && session?.user?.role === "ADMIN") {
+    if (authorized && status === "authenticated" && session?.user?.role === "ADMIN") {
       fetchFeatured();
     } else if (status !== "loading") {
       setLoading(false);
     }
-  }, [status, session]);
+  }, [authorized, status, session]);
 
   // Live search for adding title
+  useEffect(() => {
+    if (!showAddModal) return;
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") setShowAddModal(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [showAddModal]);
+
   useEffect(() => {
     if (!searchQuery.trim() || searchQuery.length < 2) {
       setSearchResults([]);
@@ -136,7 +162,7 @@ export default function AdminFeaturedPage() {
     }
   };
 
-  if (status === "loading" || loading) {
+  if (authorized && (status === "loading" || loading)) {
     return (
       <Layout title="Admin · Featured Titles">
         <LoadingScreen minHeight="60vh" message="Loading admin dashboard…" />
@@ -144,29 +170,76 @@ export default function AdminFeaturedPage() {
     );
   }
 
-  if (status !== "authenticated" || session?.user?.role !== "ADMIN") {
+  const isAdmin = authorized && status === "authenticated" && session?.user?.role === "ADMIN";
+  const activeEmail = session?.user?.email || signedInEmail;
+  const activeRole = session?.user?.role || currentRole;
+
+  if (!isAdmin) {
     return (
-      <Layout title="Access Denied">
-        <div style={{ maxWidth: 440, margin: "100px auto", textAlign: "center", padding: "0 20px" }}>
-          <ShieldAlert size={48} color="#e53e3e" style={{ margin: "0 auto 16px" }} />
-          <h1 style={{ fontSize: 24, fontWeight: 800, margin: "0 0 10px" }}>Administrator Access Required</h1>
-          <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 14, margin: "0 0 24px" }}>
-            This page is restricted to DIVINE system administrators.
-          </p>
-          <Link
-            href="/"
-            style={{
-              display: "inline-flex",
-              padding: "10px 20px",
-              borderRadius: 8,
-              background: "var(--primary, #00e599)",
-              color: "#000",
-              fontWeight: 700,
-              textDecoration: "none",
-            }}
-          >
-            Return Home
-          </Link>
+      <Layout title="Admin · Access Required">
+        <div
+          style={{
+            maxWidth: 500,
+            margin: "96px auto",
+            textAlign: "center",
+            padding: "32px 28px",
+            borderRadius: 20,
+            background: "var(--g-fill, rgba(255,255,255,0.06))",
+            border: "1px solid var(--g-edge, rgba(255,255,255,0.14))",
+            backdropFilter: "var(--g-blur, blur(24px))",
+          }}
+        >
+          <ShieldAlert size={44} color="#f5c04a" style={{ margin: "0 auto 14px" }} />
+          <h1 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 10px" }}>Administrator Access Required</h1>
+          {activeEmail ? (
+            <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 14, lineHeight: 1.55, margin: "0 0 22px" }}>
+              Signed in as <strong>{activeEmail}</strong> (Role: <code>{activeRole || "USER"}</code>).
+              {" "}To grant administrator access, add this email to <code>ADMIN_EMAILS</code> in your environment or ask an existing admin to promote your account.
+            </p>
+          ) : (
+            <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 14, lineHeight: 1.55, margin: "0 0 22px" }}>
+              Sign in with an administrator account to manage featured titles. Set <code>ADMIN_EMAILS</code> in your server environment to designate admin accounts.
+            </p>
+          )}
+          <div style={{ display: "flex", justifyContent: "center", gap: 10, flexWrap: "wrap" }}>
+            {!activeEmail && (
+              <Link
+                href="/auth/signin?callbackUrl=/admin/featured"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  height: 38,
+                  padding: "0 20px",
+                  borderRadius: 999,
+                  background: "#ffffff",
+                  color: "#000000",
+                  fontWeight: 700,
+                  fontSize: 14,
+                  textDecoration: "none",
+                }}
+              >
+                Sign in
+              </Link>
+            )}
+            <Link
+              href="/"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                height: 38,
+                padding: "0 18px",
+                borderRadius: 999,
+                background: "var(--g-fill, rgba(255,255,255,0.08))",
+                border: "1px solid var(--g-edge, rgba(255,255,255,0.16))",
+                color: "#ffffff",
+                fontWeight: 600,
+                fontSize: 14,
+                textDecoration: "none",
+              }}
+            >
+              Return Home
+            </Link>
+          </div>
         </div>
       </Layout>
     );
@@ -392,6 +465,9 @@ export default function AdminFeaturedPage() {
             onClick={() => setShowAddModal(false)}
           >
             <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="add-featured-title"
               style={{
                 width: "100%",
                 maxWidth: 520,
@@ -404,9 +480,10 @@ export default function AdminFeaturedPage() {
               onClick={(e) => e.stopPropagation()}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Add Featured Title</h3>
+                <h3 id="add-featured-title" style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Add Featured Title</h3>
                 <button
                   type="button"
+                  aria-label="Close modal"
                   onClick={() => setShowAddModal(false)}
                   style={{ background: "none", border: "none", color: "rgba(255,255,255,0.5)", cursor: "pointer", fontSize: 18 }}
                 >

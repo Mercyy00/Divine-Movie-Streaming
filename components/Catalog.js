@@ -13,15 +13,25 @@ export default function Catalog({ pageTitle, sub, items, extraTools }) {
   const [sort, setSort] = useState("rating");
 
   const genres = useMemo(() => {
-    const set = new Set(items.flatMap((t) => t.genres));
+    const set = new Set((items || []).flatMap((t) => t.genres || []));
     return [{ value: "all", label: "All" }, ...[...set].sort().map((g) => ({ value: g, label: g }))];
   }, [items]);
 
   const shown = useMemo(() => {
-    const list = genre === "all" ? [...items] : items.filter((t) => t.genres.includes(genre));
-    if (sort === "rating") list.sort((a, b) => b.rating - a.rating);
-    if (sort === "new") list.sort((a, b) => b.year - a.year || b.rating - a.rating);
-    if (sort === "az") list.sort((a, b) => a.title.localeCompare(b.title));
+    const safeItems = Array.isArray(items) ? items : [];
+    const list =
+      genre === "all"
+        ? [...safeItems]
+        : safeItems.filter((t) => Array.isArray(t.genres) && t.genres.includes(genre));
+    if (sort === "rating") list.sort((a, b) => (Number(b.rating) || 0) - (Number(a.rating) || 0));
+    if (sort === "new") {
+      list.sort(
+        (a, b) =>
+          (Number(b.year) || 0) - (Number(a.year) || 0) ||
+          (Number(b.rating) || 0) - (Number(a.rating) || 0)
+      );
+    }
+    if (sort === "az") list.sort((a, b) => String(a.title || "").localeCompare(String(b.title || "")));
     return list;
   }, [items, genre, sort]);
 
@@ -38,7 +48,19 @@ export default function Catalog({ pageTitle, sub, items, extraTools }) {
         {shown.length ? (
           <TitleGrid items={shown} />
         ) : (
-          <Empty title="Nothing here yet" text="No titles match this filter. Try another genre." />
+          <Empty
+            title="Nothing here yet"
+            text="No titles match this filter. Try another genre."
+            actionLabel={genre !== "all" || sort !== "rating" ? "Reset filters" : undefined}
+            onAction={
+              genre !== "all" || sort !== "rating"
+                ? () => {
+                    setGenre("all");
+                    setSort("rating");
+                  }
+                : undefined
+            }
+          />
         )}
       </div>
     </Layout>

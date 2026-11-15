@@ -39,6 +39,11 @@ export default function WatchlistPage({ cardMap = {} }) {
             <h1 className={styles.pageTitle}>My list</h1>
             <p className={styles.pageSub}>Save anything with the plus button.</p>
           </div>
+          <div className={styles.topActions}>
+            <Link href="/lists" className={styles.topBtn}>
+              All lists
+            </Link>
+          </div>
         </div>
 
         {titles.length === 0 ? (
