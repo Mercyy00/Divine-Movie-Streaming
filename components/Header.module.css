@@ -1,17 +1,16 @@
 .bar {
   --bar-ctl: 46px;
-  --bar-fill: var(--g-bar-fill);
-  --bar-fill-hover: var(--g-bar-fill-hover);
-  --bar-ring: var(--g-bar-edge);
+  --bar-fill: var(--bar-glass);
+  --bar-fill-hover: var(--bar-glass-hover);
+  --bar-ring: var(--glass-button-ring, none), var(--shadow-md);
   z-index: var(--z-bar, 200);
-  height: 70px;
-  grid-template-columns: minmax(auto, 460px) minmax(180px, 600px) minmax(auto, 415px);
-  grid-template-rows: 48px;
+  height: var(--bar-h, 64px);
+  grid-template-columns: minmax(max-content, 1fr) minmax(160px, 600px) minmax(max-content, 1fr);
   align-content: center;
   justify-content: space-between;
   align-items: center;
   gap: 16px;
-  padding: 10px 24px;
+  padding: 0 20px;
   display: grid;
   position: fixed;
   top: 0;
@@ -22,7 +21,7 @@
   font-size: 15px;
   color: var(--text, #ffffff);
   pointer-events: none;
-  transition: background 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: background var(--t-base, 0.25s) var(--ease-out);
 }
 
 .bar > * {
@@ -30,19 +29,31 @@
 }
 
 .barScrolled {
-  background: linear-gradient(180deg, rgba(10, 8, 7, 0.24) 0%, rgba(10, 8, 7, 0) 100%);
+  background: linear-gradient(180deg, rgba(8, 8, 8, 0.82) 0%, rgba(8, 8, 8, 0.42) 50%, rgba(8, 8, 8, 0) 100%);
 }
 
-@media (max-width: 1460px) {
+@media (max-width: 900px) {
   .bar {
-    grid-template-columns: minmax(max-content, 1fr) minmax(160px, 600px) minmax(max-content, 1fr);
+    padding: 0 14px;
+    gap: 10px;
+  }
+}
+
+@media (max-width: 768px) {
+  .bar {
+    --bar-ctl: 40px;
+    height: var(--bar-h, 56px);
+    display: flex;
+    justify-content: space-between;
+    padding: 0 8px 0 12px;
+    gap: 8px;
   }
 }
 
 .barStart {
   flex: none;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   display: flex;
   min-width: 0;
   font-family: var(--font-body);
@@ -51,60 +62,39 @@
 }
 
 .brandLink {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  text-decoration: none;
-  flex-shrink: 0;
-  border-radius: 12px;
-  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), filter 0.22s ease;
-  user-select: none;
-}
-
-.brandLink {
   display: none !important;
 }
 
 .brandLogo {
-  height: 42px;
+  height: 38px;
   width: auto;
   max-width: 90px;
   object-fit: contain;
   display: block;
-  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.7));
 }
 
 .links {
   height: var(--bar-ctl, 46px);
-  border-radius: var(--radius-pill, 999px);
-  background: var(--g-bar-fill);
-  position: relative;
-  border: 1px solid var(--g-border, rgba(255, 236, 216, 0.15));
-  box-shadow: var(--g-bar-edge);
-  backdrop-filter: var(--g-bar-blur);
-  -webkit-backdrop-filter: var(--g-bar-blur);
-  transition: border-color var(--t-fast, 0.18s) var(--ease-out), background var(--t-fast, 0.18s) var(--ease-out);
+  border-radius: var(--radius-float, 999px);
+  background: var(--bar-fill);
+  box-shadow: var(--bar-ring);
+  backdrop-filter: var(--bar-glass-blur);
+  -webkit-backdrop-filter: var(--bar-glass-blur);
+  transition: background var(--t-base, 0.25s) var(--ease-out), box-shadow var(--t-base, 0.25s) var(--ease-out);
   align-items: center;
-  padding: 4px;
-  display: inline-flex;
+  padding: 0 4px;
+  display: flex;
+  position: relative;
   overflow: hidden;
 }
 
-.links::after {
-  display: none;
-}
-
 .linkPill {
-  height: 36px;
-  border-radius: var(--radius-pill, 999px);
-  background: var(--g-bar-pill-active, linear-gradient(180deg, rgba(255, 244, 232, 0.22) 0%, rgba(255, 206, 160, 0.08) 100%));
-  box-shadow: inset 0 1px 0 rgba(255, 248, 240, 0.34), 0 4px 14px rgba(0, 0, 0, 0.22);
-  border: 1px solid rgba(255, 238, 220, 0.22);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  height: calc(var(--bar-ctl, 46px) - 8px);
+  border-radius: var(--radius-float, 999px);
+  background: var(--fill-3);
   opacity: 0;
   pointer-events: none;
-  transition: transform var(--t-base, 0.24s) var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1)), width var(--t-base, 0.24s) var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1)), opacity var(--t-fast, 0.18s);
+  transition: transform var(--t-base, 0.25s) var(--ease-out), width var(--t-base, 0.25s) var(--ease-out), opacity var(--t-fast, 0.15s);
   position: absolute;
   top: 4px;
   left: 0;
@@ -113,16 +103,15 @@
 
 .link {
   z-index: 1;
-  height: 36px;
-  border-radius: var(--radius-pill, 999px);
-  color: rgba(255, 255, 255, 0.90);
+  height: calc(var(--bar-ctl, 46px) - 8px);
+  border-radius: var(--radius-float, 999px);
+  color: var(--text, #ffffff);
   font-family: var(--font-body);
-  font-size: 14px;
+  font-size: var(--fs-lg, 16px);
   white-space: nowrap;
-  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.35);
-  transition: color var(--t-fast, 0.18s) var(--ease-out), background var(--t-fast, 0.18s) var(--ease-out), transform var(--t-fast, 0.18s) var(--ease-out);
+  transition: background var(--t-fast, 0.15s), color var(--t-fast, 0.15s);
   align-items: center;
-  padding: 0 16px;
+  padding: 0 18px;
   font-weight: 600;
   display: inline-flex;
   position: relative;
@@ -131,9 +120,14 @@
   user-select: none;
 }
 
+@media (max-width: 900px) {
+  .link {
+    padding: 0 12px;
+  }
+}
+
 .link:hover {
-  color: #ffffff;
-  background: rgba(255, 255, 255, 0.10);
+  background: var(--fill-1);
 }
 
 .link:active {
@@ -141,40 +135,46 @@
 }
 
 .linkOn {
-  color: #ffffff;
+  color: var(--text, #ffffff);
   font-weight: 600;
 }
 
 .linkOn:hover {
-  color: #ffffff;
   background: transparent;
 }
 
 .linkIcon {
   opacity: 0;
   width: 0;
-  flex: 0 0 auto;
-  place-items: center start;
   margin-right: 0;
+  transform: scale(0.8);
+  flex: none;
+  place-items: center start;
   display: inline-grid;
   overflow: hidden;
-  transition: width 0.2s var(--ease-out),
-    margin-right 0.2s var(--ease-out),
-    opacity 0.15s ease;
+  transition: width var(--t-base, 0.25s) var(--ease-out) var(--t-press, 0.12s),
+    margin-right var(--t-base, 0.25s) var(--ease-out) var(--t-press, 0.12s),
+    opacity var(--t-press, 0.12s) var(--ease-out),
+    transform var(--t-press, 0.12s) var(--ease-out);
 }
 
 .linkIcon > svg {
-  flex: 0 0 auto;
-  width: 16px;
-  height: 16px;
+  flex: none;
+  width: 20px;
+  height: 20px;
 }
 
+.link:hover .linkIcon,
+.link:focus-visible .linkIcon,
 .linkOn .linkIcon {
   opacity: 1;
-  width: 16px;
-  margin-right: 7px;
-  color: #ffffff;
-  filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.35));
+  width: 22px;
+  margin-right: 8px;
+  transform: none;
+  transition: width var(--t-base, 0.25s) var(--ease-out),
+    margin-right var(--t-base, 0.25s) var(--ease-out),
+    opacity var(--t-fast, 0.15s) var(--ease-out) var(--t-press, 0.12s),
+    transform var(--t-fast, 0.15s) var(--ease-out) var(--t-press, 0.12s);
 }
 
 .dock {
@@ -186,7 +186,7 @@
 .barEnd {
   justify-self: end;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   display: flex;
   flex: none;
 }
@@ -194,63 +194,124 @@
 .tooltipWrap {
   display: inline-flex;
   flex: none;
+  position: relative;
 }
 
 .bellSlot {
   display: inline-flex;
   flex: none;
+  position: relative;
 }
 
 .account {
   display: inline-flex;
+  align-items: center;
+  margin-left: 0;
   flex: none;
+  position: relative;
 }
 
+/* Base Vivarium Circular Glass Button (Chat & Bell share this) */
 .round {
   width: var(--bar-ctl, 46px);
   height: var(--bar-ctl, 46px);
-  border-radius: var(--radius-pill, 999px);
-  color: #ffffff;
+  border-radius: var(--radius-round, 999px);
+  color: var(--text, #ffffff);
   flex: none;
   place-items: center;
   display: grid;
-  background: var(--g-bar-fill);
-  border: 1px solid var(--g-border, rgba(255, 236, 216, 0.15));
-  box-shadow: var(--g-bar-edge);
-  backdrop-filter: var(--g-bar-blur);
-  -webkit-backdrop-filter: var(--g-bar-blur);
-  transition: transform var(--t-fast, 0.18s) var(--ease-out), background var(--t-fast, 0.18s) var(--ease-out), box-shadow var(--t-fast, 0.18s) var(--ease-out), border-color var(--t-fast, 0.18s) var(--ease-out), color var(--t-fast, 0.18s) var(--ease-out);
+  background: var(--bar-fill);
+  box-shadow: var(--bar-ring);
+  backdrop-filter: var(--bar-glass-blur);
+  -webkit-backdrop-filter: var(--bar-glass-blur);
+  transition: background var(--t-base, 0.25s) var(--ease-out),
+    box-shadow var(--t-base, 0.25s) var(--ease-out),
+    transform var(--t-fast, 0.15s) var(--ease-out);
   cursor: pointer;
   position: relative;
   text-decoration: none;
-  overflow: hidden;
+  border: none;
+  padding: 0;
+  overflow: visible;
 }
 
-.round::after {
-  display: none;
+.round:hover {
+  background: var(--bar-fill-hover);
+}
+
+.round:active {
+  transform: scale(0.92);
 }
 
 .round svg {
   position: relative;
   z-index: 2;
-  width: 19px;
-  height: 19px;
-  filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.35));
+  width: 20px;
+  height: 20px;
 }
 
-.round:hover {
-  background: var(--g-bar-fill-hover);
-  border-color: var(--g-border-hover, rgba(255, 240, 224, 0.26));
+/* Chat button styles */
+.chatBtn {
+  position: relative;
+}
+
+.chatIco {
+  place-items: center;
+  display: grid;
+  position: relative;
+}
+
+.chatBadge {
+  border-radius: var(--radius-float, 999px);
+  background: var(--danger, #f4776b);
+  min-width: 16px;
+  height: 16px;
+  color: var(--on-accent, #080808);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  place-items: center;
+  padding: 0 4px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  display: grid;
+  position: absolute;
+  top: -4px;
+  right: -4px;
+}
+
+/* Notification Bell button styles */
+.bellBtn {
+  position: relative;
+}
+
+.bellGlyph {
+  transform-origin: 50% 16%;
+  place-items: center;
+  display: inline-grid;
+}
+
+.notifBadge {
+  border-radius: var(--radius-round, 999px);
+  background: var(--danger, #f4776b);
+  min-width: 16px;
+  height: 16px;
   color: #ffffff;
-  transform: translateY(-1px);
-  box-shadow: var(--g-bar-edge-hover);
+  transition: transform var(--t-base, 0.25s) var(--ease-lift, cubic-bezier(0.34, 1.4, 0.64, 1)),
+    opacity var(--t-fast, 0.15s) var(--ease-out);
+  place-items: center;
+  padding: 0 4px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  display: grid;
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  pointer-events: none;
+  z-index: 3;
 }
 
-.round:active {
-  transform: scale(0.96);
-}
-
-/* Calm unread indicator dot */
 .notifDot {
   position: absolute;
   top: 11px;
@@ -264,37 +325,40 @@
   z-index: 3;
 }
 
+/* Profile Avatar button styles */
 .avatarBtn {
   width: var(--bar-ctl, 46px);
   height: var(--bar-ctl, 46px);
-  border-radius: var(--radius-pill, 999px);
+  border-radius: var(--radius-round, 999px);
   overflow: hidden;
-  background: var(--g-bar-fill);
-  border: 1.5px solid rgba(255, 238, 220, 0.22);
-  box-shadow: var(--g-bar-edge);
+  background: transparent;
+  box-shadow: var(--bar-ring);
+  backdrop-filter: var(--bar-glass-blur);
+  -webkit-backdrop-filter: var(--bar-glass-blur);
   padding: 0;
+  border: none;
   cursor: pointer;
   display: grid;
   place-items: center;
-  transition: transform var(--t-fast, 0.18s) var(--ease-out), box-shadow var(--t-fast, 0.18s) var(--ease-out), border-color var(--t-fast, 0.18s) var(--ease-out);
+  transition: background var(--t-base, 0.25s) var(--ease-out),
+    box-shadow var(--t-base, 0.25s) var(--ease-out),
+    transform var(--t-fast, 0.15s) var(--ease-out);
   position: relative;
 }
 
 .avatarBtn:hover {
-  transform: translateY(-1px);
-  border-color: rgba(255, 244, 232, 0.42);
-  box-shadow: var(--g-bar-edge-hover);
+  background: var(--bar-fill-hover);
 }
 
 .avatarBtn:active {
-  transform: scale(0.96);
+  transform: scale(0.92);
 }
 
 .avatarWrap {
   display: block;
   width: 100%;
   height: 100%;
-  border-radius: var(--radius-pill, 999px);
+  border-radius: var(--radius-round, 999px);
   overflow: hidden;
 }
 
@@ -303,6 +367,20 @@
   height: 100%;
   object-fit: cover;
   display: block;
+  border-radius: var(--radius-round, 999px);
+}
+
+.avatarFallback {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius-round, 999px);
+  background: var(--bar-fill);
+  color: var(--text, #ffffff);
+  font-weight: 600;
+  user-select: none;
+  transition: background var(--t-base, 0.25s) var(--ease-out);
 }
 
 .avatar {
@@ -310,9 +388,9 @@
   place-items: center;
   width: 100%;
   height: 100%;
-  border-radius: var(--radius-pill, 999px);
-  background: linear-gradient(135deg, rgba(255, 235, 210, 0.14), rgba(255, 235, 210, 0.04));
-  color: var(--text, #FFF6EC);
+  border-radius: var(--radius-round, 999px);
+  background: var(--bar-fill);
+  color: var(--text, #ffffff);
   font-weight: 600;
   user-select: none;
 }

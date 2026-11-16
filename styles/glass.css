@@ -12,13 +12,13 @@
   --g-border-hover: rgba(255, 240, 224, 0.26);
 
   /* Floating header / search / icon pill subtle warm-tinted liquid glass */
-  --g-bar-fill: linear-gradient(180deg, rgba(255, 242, 228, 0.11) 0%, rgba(255, 194, 138, 0.03) 100%), rgba(18, 14, 12, 0.36);
-  --g-bar-fill-hover: linear-gradient(180deg, rgba(255, 245, 234, 0.17) 0%, rgba(255, 198, 145, 0.055) 100%), rgba(26, 20, 16, 0.48);
-  --g-bar-blur: blur(30px) saturate(185%) brightness(1.08);
-  --g-bar-edge: inset 0 1px 0 rgba(255, 244, 232, 0.26), inset 0 -1px 0 rgba(255, 210, 170, 0.07), 0 10px 30px -6px rgba(0, 0, 0, 0.46);
-  --g-bar-edge-hover: inset 0 1px 0 rgba(255, 248, 240, 0.36), inset 0 -1px 0 rgba(255, 215, 175, 0.11), 0 14px 36px -6px rgba(0, 0, 0, 0.54);
-  --g-bar-pill-active: linear-gradient(180deg, rgba(255, 244, 232, 0.22) 0%, rgba(255, 206, 160, 0.08) 100%);
-  --g-panel-fill: linear-gradient(180deg, rgba(255, 242, 228, 0.07) 0%, rgba(255, 210, 170, 0.015) 100%), rgba(14, 12, 11, 0.86);
+  --g-bar-fill: var(--bar-glass);
+  --g-bar-fill-hover: var(--bar-glass-hover);
+  --g-bar-blur: var(--bar-glass-blur);
+  --g-bar-edge: var(--bar-ring);
+  --g-bar-edge-hover: var(--bar-ring);
+  --g-bar-pill-active: var(--fill-3);
+  --g-panel-fill: linear-gradient(var(--fill-1), var(--fill-1)) rgba(var(--bg-rgb, 8, 8, 8), 0.72);
 }
 
 [class*="_detailsBtn"],

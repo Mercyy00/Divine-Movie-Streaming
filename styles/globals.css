@@ -76,28 +76,35 @@
   --text-faint: rgba(255, 240, 224, 0.50);
   --text-soft: rgba(255, 240, 224, 0.86);
 
-  /* Warm glass & navigation */
-  --bar-glass: rgba(20, 14, 10, 0.62);
-  --bar-glass-hover: rgba(30, 21, 15, 0.74);
-  --bar-blur: blur(28px) saturate(170%) brightness(1.08);
-  --bar-border: 1px solid var(--hairline);
-  --glass-control-blur: blur(28px) saturate(170%) brightness(1.08);
-  --bar-glass-blur: var(--glass-control-blur);
-  --glass-button-ring: inset 1px 1px 0 rgba(255, 230, 200, 0.40), inset -1px -1px 0 rgba(255, 230, 200, 0.08), 0 8px 24px -8px rgba(0, 0, 0, 0.55);
-  --bar-ring: inset 1px 1px 0 rgba(255, 230, 200, 0.36), inset -1px -1px 0 rgba(255, 230, 200, 0.08), 0 12px 32px -8px rgba(0, 0, 0, 0.6);
-  --bar-shadow: 0 8px 32px rgba(0, 0, 0, 0.44), inset 1px 1px 0 rgba(255, 230, 200, 0.28);
+  /* Vivarium Glass & Navigation Tokens */
+  --glass-under: rgba(12, 12, 14, 0.22);
+  --pill-sheen: linear-gradient(180deg, rgba(var(--raise-rgb, 255, 255, 255), 0.08) 0%, rgba(var(--raise-rgb, 255, 255, 255), 0) 100%);
+  --pill-blur: blur(20px) saturate(1.6);
+  --bar-glass-blur: blur(20px) saturate(1.6);
+  --bar-glass: var(--pill-sheen), linear-gradient(var(--fill-2), var(--fill-2)) var(--glass-under);
+  --bar-glass-hover: var(--pill-sheen), linear-gradient(var(--fill-3), var(--fill-3)) var(--glass-under);
+  --glass-button-ring: none;
   --shadow-md: 0 12px 32px -12px rgba(0, 0, 0, 0.6);
+  --bar-ring: var(--glass-button-ring, none), var(--shadow-md);
+  --bar-fill: var(--bar-glass);
+  --bar-fill-hover: var(--bar-glass-hover);
+  --bar-border: none;
+  --bar-shadow: var(--shadow-md);
   --glass-shadow: 0 16px 40px -12px rgba(0, 0, 0, 0.65);
+  --panel-shadow: 0 24px 48px -14px rgba(0, 0, 0, 0.7);
   --lift-2: 0 24px 60px -24px rgba(0, 0, 0, 0.85);
-  --fill-1: rgba(255, 235, 210, 0.05);
-  --fill-2: rgba(255, 235, 210, 0.09);
-  --fill-3: rgba(255, 235, 210, 0.15);
-  --fill-4: rgba(255, 235, 210, 0.22);
-  --fill-field: rgba(255, 235, 210, 0.05);
-  --ring-soft: inset 0 0 0 1px var(--hairline);
-  --ctl-ring: inset 0 0 0 1px var(--hairline);
-  --ctl-pad: 0 16px;
+  --fill-1: rgba(255, 255, 255, 0.07);
+  --fill-2: rgba(255, 255, 255, 0.12);
+  --fill-3: rgba(255, 255, 255, 0.18);
+  --fill-4: rgba(255, 255, 255, 0.28);
+  --fill-field: rgba(255, 255, 255, 0.045);
+  --ring-soft: inset 0 0 0 1px var(--fill-3);
+  --ctl-ring: inset 0 0 0 1px var(--fill-3);
+  --ctl-pad: 0 18px;
   --ring: 0 0 0 2px rgba(var(--accent-rgb), 0.55);
+  --danger: #f4776b;
+  --danger-lift: #ff8a8a;
+  --danger-soft: rgba(244, 119, 107, 0.12);
 
   --z-raised: 10;
   --z-sticky: 100;

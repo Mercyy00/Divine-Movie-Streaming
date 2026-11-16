@@ -5,7 +5,18 @@
 .trigger {
   display: grid;
   place-items: center;
-  border-radius: var(--radius-pill, 999px);
+  border-radius: var(--radius-round, 999px);
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: inherit;
+  outline: none;
+}
+
+.trigger:focus-visible {
+  outline: 2px solid var(--accent, #f5c04a);
+  outline-offset: 2px;
 }
 
 .panel {
@@ -15,15 +26,12 @@
   right: 0;
   min-width: 248px;
   padding: 8px;
-  border-radius: var(--radius-panel, 20px);
-  background: var(--g-panel-fill, linear-gradient(180deg, rgba(255, 255, 255, 0.10) 0%, rgba(255, 255, 255, 0.02) 100%), rgba(16, 18, 24, 0.80));
-  backdrop-filter: var(--g-bar-blur, blur(32px) saturate(190%) brightness(1.10));
-  -webkit-backdrop-filter: var(--g-bar-blur, blur(32px) saturate(190%) brightness(1.10));
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.28),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.06),
-    0 24px 56px -12px rgba(0, 0, 0, 0.72);
+  border-radius: var(--radius-menu, 16px);
+  background: linear-gradient(var(--fill-1), var(--fill-1)) rgba(var(--bg-rgb, 8, 8, 8), 0.78);
+  backdrop-filter: var(--bar-glass-blur, blur(28px) saturate(1.6));
+  -webkit-backdrop-filter: var(--bar-glass-blur, blur(28px) saturate(1.6));
+  border: 1px solid var(--fill-2, rgba(255, 255, 255, 0.12));
+  box-shadow: var(--panel-shadow, 0 24px 48px -14px rgba(0, 0, 0, 0.7));
   transform-origin: top right;
   animation: popIn 0.2s var(--ease-out) backwards;
   overflow: hidden;

@@ -7,10 +7,11 @@ import { useRouter } from "next/router";
 import {
   House,
   Clapperboard,
-  TvMinimal,
+  TvMinimalPlay,
   Drama,
   Search,
   MessageCircle,
+  MessagesSquare,
   Bell,
   LogOut,
   LogIn,
@@ -46,7 +47,7 @@ import styles from "./Header.module.css";
 export const NAV = [
   { href: "/", label: "Home", Icon: House, match: ["/"] },
   { href: "/movies", label: "Movies", Icon: Clapperboard, match: ["/movies", "/browse/movie"] },
-  { href: "/series", label: "Series", Icon: TvMinimal, match: ["/series", "/browse/tv"] },
+  { href: "/series", label: "Series", Icon: TvMinimalPlay, match: ["/series", "/browse/tv"] },
   { href: "/anime", label: "Anime", Icon: Drama, match: ["/anime"] },
 ];
 
@@ -87,7 +88,7 @@ export function Avatar({
   }
 
   return (
-    <span className={styles.avatar} style={{ width: size, height: size, fontSize: size * 0.42 }} aria-hidden="true">
+    <span className={styles.avatarFallback} style={{ width: size, height: size, fontSize: size * 0.42 }} aria-hidden="true">
       <UserRound size={Math.round(size * 0.48)} strokeWidth={1.8} />
     </span>
   );
@@ -825,7 +826,7 @@ export default function Header({ watchTitle = null }) {
           </button>
 
           <Link href="/watch-party" className={styles.perfRound} aria-label="Chat" title="Watch Party & Chat">
-            <MessageCircle size={20} strokeWidth={1.8} />
+            <MessagesSquare size={20} strokeWidth={1.8} />
           </Link>
 
           {/* Notifications */}
@@ -837,7 +838,11 @@ export default function Header({ watchTitle = null }) {
                 aria-label={unread > 0 ? `Notifications (${unread} unread)` : "Notifications"}
               >
                 <Bell size={20} strokeWidth={1.8} />
-                {unread > 0 && <span className={styles.notifDot} aria-hidden="true" />}
+                {unread > 0 && (
+                  <span className={styles.notifBadge} aria-hidden="true">
+                    {unread > 99 ? "99+" : unread}
+                  </span>
+                )}
               </span>
             }
             panelClass={styles.notes}
@@ -938,9 +943,9 @@ export default function Header({ watchTitle = null }) {
 
         {/* Watch party / community chat */}
         <span className={styles.tooltipWrap}>
-          <Link href="/watch-party" className={styles.round} aria-label="Chat">
-            <span style={{ display: "inline-flex", flex: "0 0 auto", transform: "none" }}>
-              <MessageCircle size={19} strokeWidth={1.85} />
+          <Link href="/watch-party" className={`${styles.round} ${styles.chatBtn}`} aria-label="Chat">
+            <span className={styles.chatIco}>
+              <MessagesSquare size={20} strokeWidth={1.9} />
             </span>
           </Link>
         </span>
@@ -951,13 +956,17 @@ export default function Header({ watchTitle = null }) {
             label="Notifications"
             trigger={
               <span
-                className={styles.round}
+                className={`${styles.round} ${styles.bellBtn}`}
                 aria-label={unread > 0 ? `Notifications (${unread} unread)` : "Notifications"}
               >
-                <span style={{ display: "inline-flex", flex: "0 0 auto" }}>
-                  <Bell size={19} strokeWidth={1.85} />
+                <span className={styles.bellGlyph}>
+                  <Bell size={20} strokeWidth={1.85} />
                 </span>
-                {unread > 0 && <span className={styles.notifDot} aria-hidden="true" />}
+                {unread > 0 && (
+                  <span className={styles.notifBadge} aria-hidden="true">
+                    {unread > 99 ? "99+" : unread}
+                  </span>
+                )}
               </span>
             }
             panelClass={styles.notes}
