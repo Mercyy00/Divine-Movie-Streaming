@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { createPortal } from "react-dom";
+import Counter from "./Counter";
 import { useToast } from "../lib/useToast";
 import {
   Plus,
@@ -552,9 +553,16 @@ export default function MediaCard({
     }
   };
 
+  const qualityTag =
+    title?.quality ||
+    (title?.isCam || title?.cam ? "CAM" : null) ||
+    (title?.is4k || title?.isUhd ? "4K UHD" : null) ||
+    (title?.isHdr ? "HDR" : null);
+
   const activeBadge = !rank
     ? badge ||
       title?.badge ||
+      qualityTag ||
       (isAnime
         ? title?.status === "airing"
           ? "SIMULCAST"
@@ -605,7 +613,9 @@ export default function MediaCard({
         displayRating ? (
           <span key="rating" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
             <span className={styles.star}>★</span>
-            <span className={styles.ratingVal}>{displayRating}</span>
+            <span className={styles.ratingVal}>
+              <Counter value={displayRating} />
+            </span>
           </span>
         ) : null,
         displayYear ? <span key="year" className={styles.year}>{displayYear}</span> : null,
@@ -653,7 +663,10 @@ export default function MediaCard({
             {/* Top-left Notch Cutout (Rank, badge, New episode) */}
             {rank ? (
               <span className={styles.notch}>
-                <span className={styles.badgeRank}>{rank}</span>
+                <span className={styles.badgeRank}>
+                  <span className={styles.rankHash}>#</span>
+                  <Counter value={rank} />
+                </span>
               </span>
             ) : activeBadge ? (
               <span className={styles.notch}>
@@ -661,12 +674,16 @@ export default function MediaCard({
                   className={
                     activeBadge.toLowerCase() === "cam"
                       ? styles.badgeCam
+                      : activeBadge.toLowerCase() === "4k" || activeBadge.toLowerCase() === "4k uhd"
+                      ? styles.badge4k
+                      : activeBadge.toLowerCase() === "hdr"
+                      ? styles.badgeHdr
                       : activeBadge.toLowerCase() === "new episode"
                       ? styles.badgeNew
                       : styles.badgeHd
                   }
                 >
-                  {activeBadge.toLowerCase() === "cam" ? "Cam" : activeBadge}
+                  {activeBadge.toLowerCase() === "cam" ? "CAM" : activeBadge}
                 </span>
               </span>
             ) : null}

@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useSession, signOut } from "next-auth/react";
+import Counter from "./Counter";
 import { DEFAULT_AVATAR, normalizeAvatarUrl } from "../lib/avatars";
 import { clearAllLocalData } from "../lib/store";
 import Link from "next/link";
@@ -840,7 +841,7 @@ export default function Header({ watchTitle = null }) {
                 <Bell size={20} strokeWidth={1.8} />
                 {unread > 0 && (
                   <span className={styles.notifBadge} aria-hidden="true">
-                    {unread > 99 ? "99+" : unread}
+                    <Counter value={unread > 99 ? "99+" : unread} />
                   </span>
                 )}
               </span>
@@ -964,7 +965,7 @@ export default function Header({ watchTitle = null }) {
                 </span>
                 {unread > 0 && (
                   <span className={styles.notifBadge} aria-hidden="true">
-                    {unread > 99 ? "99+" : unread}
+                    <Counter value={unread > 99 ? "99+" : unread} />
                   </span>
                 )}
               </span>

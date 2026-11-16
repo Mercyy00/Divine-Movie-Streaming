@@ -76,13 +76,13 @@
   --text-faint: rgba(255, 240, 224, 0.50);
   --text-soft: rgba(255, 240, 224, 0.86);
 
-  /* Vivarium Glass & Navigation Tokens */
-  --glass-under: rgba(12, 12, 14, 0.22);
-  --pill-sheen: linear-gradient(180deg, rgba(var(--raise-rgb, 255, 255, 255), 0.08) 0%, rgba(var(--raise-rgb, 255, 255, 255), 0) 100%);
+  /* Vivarium Glass & Navigation Tokens (with subtle Autumn warm amber/orange tint) */
+  --glass-under: rgba(22, 14, 10, 0.32);
+  --pill-sheen: linear-gradient(180deg, rgba(255, 245, 235, 0.11) 0%, rgba(255, 170, 75, 0.03) 100%);
   --pill-blur: blur(20px) saturate(1.6);
   --bar-glass-blur: blur(20px) saturate(1.6);
-  --bar-glass: var(--pill-sheen), linear-gradient(var(--fill-2), var(--fill-2)) var(--glass-under);
-  --bar-glass-hover: var(--pill-sheen), linear-gradient(var(--fill-3), var(--fill-3)) var(--glass-under);
+  --bar-glass: var(--pill-sheen), linear-gradient(rgba(255, 235, 215, 0.10), rgba(255, 160, 60, 0.045)), var(--glass-under);
+  --bar-glass-hover: var(--pill-sheen), linear-gradient(rgba(255, 242, 225, 0.16), rgba(255, 170, 70, 0.075)), var(--glass-under);
   --glass-button-ring: none;
   --shadow-md: 0 12px 32px -12px rgba(0, 0, 0, 0.6);
   --bar-ring: var(--glass-button-ring, none), var(--shadow-md);

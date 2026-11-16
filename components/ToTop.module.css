@@ -1,0 +1,146 @@
+/* ToTop: Scroll progress and Rocket Launch back-to-top button */
+
+.btn {
+  z-index: var(--z-sticky, 100);
+  width: var(--ctl-h, 46px);
+  height: var(--ctl-h, 46px);
+  border-radius: var(--radius-float, 999px);
+  background: var(--bar-glass);
+  -webkit-backdrop-filter: var(--bar-glass-blur);
+  backdrop-filter: var(--bar-glass-blur);
+  box-shadow: var(--bar-ring);
+  border: 1px solid var(--hairline, rgba(255, 214, 170, 0.14));
+  color: var(--text, #FFF6EC);
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(14px) scale(0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  outline: none;
+  transition:
+    background 0.25s var(--ease-out),
+    border-color 0.25s var(--ease-out),
+    opacity 0.25s var(--ease-out),
+    transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+    visibility 0s,
+    bottom 0.35s var(--ease-out);
+}
+
+.on {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scale(1);
+}
+
+.on:hover {
+  background: var(--bar-glass-hover);
+  border-color: var(--hairline-strong, rgba(255, 214, 170, 0.32));
+  box-shadow: 0 16px 36px -8px rgba(0, 0, 0, 0.7), 0 0 20px rgba(255, 138, 43, 0.22);
+}
+
+.on:hover .arrow {
+  transform: translateY(-2px);
+}
+
+.on:active .arrow {
+  transform: scale(0.90);
+}
+
+.launch {
+  animation: rocket 0.65s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  pointer-events: none;
+}
+
+.launch::after {
+  content: "";
+  transform-origin: top;
+  border-radius: 3px;
+  filter: blur(1.5px);
+  width: 5px;
+  height: 22px;
+  animation: flame 0.65s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  background: linear-gradient(180deg, #ff8a2b 0%, #ffc84a 45%, rgba(216, 52, 28, 0) 100%);
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translate(-50%);
+}
+
+@keyframes rocket {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  30% {
+    transform: translateY(-10px) scale(0.98);
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-125vh) scale(1.05);
+  }
+}
+
+@keyframes flame {
+  0% {
+    opacity: 0;
+    transform: translate(-50%) scaleY(0.3);
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%) scaleY(2.6);
+  }
+}
+
+.arrow {
+  width: 20px;
+  height: 20px;
+  transition: transform 0.25s var(--ease-out);
+  overflow: visible;
+  display: block;
+}
+
+.track,
+.fill {
+  fill: none;
+  stroke-width: 2.6px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.track {
+  stroke: rgba(255, 235, 215, 0.24);
+}
+
+.fill {
+  stroke: #ffffff;
+}
+
+@media (max-width: 768px) {
+  .btn {
+    right: 14px;
+    bottom: calc(var(--tabs-h, 56px) + 16px + env(safe-area-inset-bottom, 0px));
+    width: 42px;
+    height: 42px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .launch {
+    animation: none !important;
+  }
+  .launch::after {
+    display: none !important;
+  }
+}

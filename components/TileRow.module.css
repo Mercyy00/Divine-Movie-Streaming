@@ -15,6 +15,38 @@
   margin-bottom: 16px;
 }
 
+.tail {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.viewAll {
+  min-height: var(--ctl-h-xs, 28px);
+  font-size: 13.5px;
+  color: var(--text-dim, rgba(255, 240, 224, 0.72));
+  white-space: nowrap;
+  transition: color 0.18s ease;
+  align-items: center;
+  gap: 3px;
+  font-weight: 600;
+  display: inline-flex;
+  text-decoration: none;
+}
+
+.viewAll svg {
+  transition: transform 0.22s var(--ease-out);
+}
+
+.viewAll:hover {
+  color: var(--text, #FFF6EC);
+}
+
+.viewAll:hover svg {
+  transform: translateX(3px);
+}
+
 .title {
   margin: 0;
   font-size: 22px;
@@ -43,14 +75,14 @@
   display: grid;
   place-items: center;
   border-radius: var(--pager-arrow-radius, 999px);
-  background: var(--g-fill);
-  backdrop-filter: var(--g-blur);
-  -webkit-backdrop-filter: var(--g-blur);
-  border: 1px solid var(--hairline, rgba(255, 214, 170, 0.12));
-  box-shadow: var(--g-edge);
+  background: var(--bar-glass);
+  backdrop-filter: var(--bar-glass-blur);
+  -webkit-backdrop-filter: var(--bar-glass-blur);
+  border: 1px solid var(--hairline, rgba(255, 214, 170, 0.14));
+  box-shadow: var(--bar-ring);
   color: var(--text, #FFF6EC);
   cursor: pointer;
-  transition: background-color 0.18s var(--ease-out), border-color 0.18s var(--ease-out), box-shadow 0.18s var(--ease-out), transform 0.16s var(--ease-out);
+  transition: background 0.2s var(--ease-out), border-color 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out), transform 0.16s var(--ease-out);
 }
 
 :global(html[data-theme-mode="performance"]) .arrowBtn {
@@ -58,9 +90,9 @@
 }
 
 .arrowBtn:hover:not(:disabled) {
-  background: var(--g-fill-hover);
-  border-color: var(--hairline-strong, rgba(255, 214, 170, 0.24));
-  box-shadow: var(--g-edge-hover);
+  background: var(--bar-glass-hover);
+  border-color: var(--hairline-strong, rgba(255, 214, 170, 0.32));
+  box-shadow: 0 12px 28px -6px rgba(0, 0, 0, 0.6), 0 0 14px rgba(255, 138, 43, 0.16);
 }
 
 .arrowBtn:active:not(:disabled) {

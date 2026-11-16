@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import BrandCard from "./BrandCard";
 import styles from "./TileRow.module.css";
 
-export default function TileRow({ title, items = [], param = "service", className = "" }) {
+export default function TileRow({ title, items = [], param = "service", href, className = "" }) {
   const scroller = useRef(null);
   const [edge, setEdge] = useState({ start: true, end: false });
 
@@ -101,25 +102,33 @@ export default function TileRow({ title, items = [], param = "service", classNam
     <section className={`${styles.section} ${className}`}>
       <header className={styles.head}>
         <h2 className={styles.title}>{title}</h2>
-        <div className={styles.arrows}>
-          <button
-            type="button"
-            className={styles.arrowBtn}
-            onClick={() => scroll(-1)}
-            disabled={edge.start}
-            aria-label="Scroll left"
-          >
-            <ChevronLeft size={18} strokeWidth={1.75} />
-          </button>
-          <button
-            type="button"
-            className={styles.arrowBtn}
-            onClick={() => scroll(1)}
-            disabled={edge.end}
-            aria-label="Scroll right"
-          >
-            <ChevronRight size={18} strokeWidth={1.75} />
-          </button>
+        <div className={styles.tail}>
+          {href && (
+            <Link href={href} className={styles.viewAll}>
+              View All
+              <ChevronRight size={15} strokeWidth={2} />
+            </Link>
+          )}
+          <div className={styles.arrows}>
+            <button
+              type="button"
+              className={styles.arrowBtn}
+              onClick={() => scroll(-1)}
+              disabled={edge.start}
+              aria-label="Scroll left"
+            >
+              <ChevronLeft size={18} strokeWidth={1.75} />
+            </button>
+            <button
+              type="button"
+              className={styles.arrowBtn}
+              onClick={() => scroll(1)}
+              disabled={edge.end}
+              aria-label="Scroll right"
+            >
+              <ChevronRight size={18} strokeWidth={1.75} />
+            </button>
+          </div>
         </div>
       </header>
 

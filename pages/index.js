@@ -438,8 +438,8 @@ export default function Home({ initialData }) {
         </MediaRow>
       ) : null}
 
-      <TileRow title="Browse by service" items={SERVICES} param="service" />
-      <TileRow title="Browse by studio" items={STUDIOS} param="studio" />
+      <TileRow title="Browse by service" items={SERVICES} param="service" href="/discover" />
+      <TileRow title="Browse by studio" items={STUDIOS} param="studio" href="/discover" />
 
       {comingSoonLoading ? (
         <SkeletonRow title="Coming soon" count={6} />

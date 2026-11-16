@@ -226,25 +226,33 @@ export default function MediaRow({ title, href, menu, menus, tabs, pager, childr
             ))}
           </div>
         )}
-        {pager ? (
-          <div className={styles.arrows}>
-            <button type="button" onClick={pager.previous} disabled={pager.page <= 1 || pager.loading} aria-label="Previous page">
-              <ChevronLeft size={18} strokeWidth={1.75} />
-            </button>
-            <button type="button" onClick={pager.next} disabled={!pager.hasMore || pager.loading} aria-label="Next page">
-              <ChevronRight size={18} strokeWidth={1.75} />
-            </button>
-          </div>
-        ) : (
-          <div className={styles.arrows}>
-            <button type="button" onClick={() => page(-1)} disabled={edge.start} aria-label="Scroll left">
-              <ChevronLeft size={18} strokeWidth={1.75} />
-            </button>
-            <button type="button" onClick={() => page(1)} disabled={edge.end} aria-label="Scroll right">
-              <ChevronRight size={18} strokeWidth={1.75} />
-            </button>
-          </div>
-        )}
+        <div className={styles.tail}>
+          {href && (
+            <Link href={href} className={styles.viewAll}>
+              View All
+              <ChevronRight size={15} strokeWidth={2} />
+            </Link>
+          )}
+          {pager ? (
+            <div className={styles.arrows}>
+              <button type="button" onClick={pager.previous} disabled={pager.page <= 1 || pager.loading} aria-label="Previous page">
+                <ChevronLeft size={18} strokeWidth={1.75} />
+              </button>
+              <button type="button" onClick={pager.next} disabled={!pager.hasMore || pager.loading} aria-label="Next page">
+                <ChevronRight size={18} strokeWidth={1.75} />
+              </button>
+            </div>
+          ) : (
+            <div className={styles.arrows}>
+              <button type="button" onClick={() => page(-1)} disabled={edge.start} aria-label="Scroll left">
+                <ChevronLeft size={18} strokeWidth={1.75} />
+              </button>
+              <button type="button" onClick={() => page(1)} disabled={edge.end} aria-label="Scroll right">
+                <ChevronRight size={18} strokeWidth={1.75} />
+              </button>
+            </div>
+          )}
+        </div>
       </header>
       <div className={styles.scrollerWrap}>
         <div

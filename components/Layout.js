@@ -3,6 +3,8 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import Header, { MobileNav } from "./Header";
 import PrivacyBanner from "./PrivacyBanner";
+import Grainient from "./Grainient";
+import ToTop from "./ToTop";
 import { BRAND } from "../lib/constants";
 import styles from "./Layout.module.css";
 
@@ -45,6 +47,7 @@ export default function Layout({
         <link rel="icon" type="image/png" sizes="64x64" href="/favicon.png" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
       </Head>
+      <Grainient />
       <div className={styles.mood} aria-hidden="true" />
       <Header />
       <main className={`pageShell ${flush ? "" : styles.padded}`}>{children}</main>
@@ -88,6 +91,7 @@ export default function Layout({
       </footer>
       <PrivacyBanner />
       <MobileNav />
+      <ToTop />
     </>
   );
 }

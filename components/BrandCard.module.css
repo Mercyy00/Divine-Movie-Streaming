@@ -133,16 +133,17 @@
 
 @media (hover: hover) {
   .card:hover {
-    transform: translateY(-3px);
-    border-color: var(--hairline-strong, rgba(255, 214, 170, 0.22));
+    transform: translateY(-4px) scale(1.02);
+    border-color: var(--hairline-strong, rgba(255, 214, 170, 0.32));
     box-shadow:
       var(--g-edge-hover),
-      0 14px 32px -8px var(--brand-tint, rgba(0, 0, 0, 0.5)),
+      0 18px 40px -8px var(--brand-glow, rgba(0, 0, 0, 0.5)),
+      0 0 24px var(--brand-tint, rgba(255, 138, 43, 0.2)),
       0 12px 28px rgba(0, 0, 0, 0.55);
   }
 
   .card:hover .ambientGlow {
-    opacity: 0.55;
+    opacity: 0.85;
   }
 
   .card:hover .logoImg {
