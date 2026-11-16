@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { createPortal } from "react-dom";
-import Counter from "./Counter";
 import { useToast } from "../lib/useToast";
 import {
   Plus,
@@ -613,9 +612,7 @@ export default function MediaCard({
         displayRating ? (
           <span key="rating" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
             <span className={styles.star}>★</span>
-            <span className={styles.ratingVal}>
-              <Counter value={displayRating} />
-            </span>
+            <span className={styles.ratingVal}>{displayRating}</span>
           </span>
         ) : null,
         displayYear ? <span key="year" className={styles.year}>{displayYear}</span> : null,
@@ -665,7 +662,7 @@ export default function MediaCard({
               <span className={styles.notch}>
                 <span className={styles.badgeRank}>
                   <span className={styles.rankHash}>#</span>
-                  <Counter value={rank} />
+                  {rank}
                 </span>
               </span>
             ) : activeBadge ? (

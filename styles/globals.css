@@ -1063,7 +1063,6 @@ a svg:not([class*="ToTop_track"]):not([class*="ToTop_fill"]):not([class*="brandL
     color 0.2s ease,
     opacity 0.2s ease,
     filter var(--t-butter) var(--ease-butter);
-  will-change: transform;
 }
 
 /* Universal buttery hover lift for every single icon inside interactive parents */
