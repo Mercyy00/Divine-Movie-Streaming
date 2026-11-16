@@ -128,7 +128,7 @@
 .arrow {
   color: var(--text-faint, rgba(255, 240, 224, 0.56));
   flex-shrink: 0;
-  transition: transform 0.2s var(--ease-out), color 0.2s var(--ease-out);
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), color 0.2s var(--ease-out);
 }
 
 @media (hover: hover) {
