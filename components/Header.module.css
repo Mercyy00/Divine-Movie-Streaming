@@ -248,6 +248,20 @@
   z-index: 2;
   width: 20px;
   height: 20px;
+  transition: transform var(--t-fast, 0.2s) var(--ease-out);
+}
+
+.round:hover svg {
+  transform: scale(1.08);
+}
+
+.bellBtn:hover .bellGlyph svg {
+  transform-origin: 50% 15%;
+  animation: bellRing 0.75s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+.chatBtn:hover .chatIco svg {
+  animation: chatBounce 0.42s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 /* Chat button styles */

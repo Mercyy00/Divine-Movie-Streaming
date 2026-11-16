@@ -1025,3 +1025,228 @@ html.divine-intro-pending::after {
     opacity 600ms cubic-bezier(0.22, 1, 0.36, 1),
     transform 600ms cubic-bezier(0.22, 1, 0.36, 1);
 }
+
+/* ==========================================================================
+   SMOOTH EASY LUCIDE ICON ANIMATIONS & MICRO-INTERACTIONS
+   Universal physics-based transitions for all Lucide SVG icons
+   ========================================================================== */
+
+svg.lucide,
+svg[class*="lucide"] {
+  display: inline-block;
+  vertical-align: middle;
+  flex-shrink: 0;
+  transform-origin: center center;
+  transition:
+    transform var(--t-fast, 0.22s) var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1)),
+    color var(--t-fast, 0.22s) var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1)),
+    opacity var(--t-fast, 0.22s) var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1)),
+    filter var(--t-fast, 0.22s) var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1)),
+    stroke var(--t-fast, 0.22s) var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1));
+  will-change: transform;
+}
+
+/* Universal hover lift on buttons/links containing Lucide icons */
+button:hover:not(:disabled) > svg.lucide,
+button:hover:not(:disabled) [class*="Icon"] > svg.lucide,
+button:hover:not(:disabled) [class*="ico"] > svg.lucide,
+button:hover:not(:disabled) [class*="glyph"] > svg.lucide,
+a:hover > svg.lucide,
+a:hover [class*="Icon"] > svg.lucide,
+a:hover [class*="ico"] > svg.lucide,
+[role="button"]:hover:not([aria-disabled="true"]) > svg.lucide,
+[class*="round"]:hover svg.lucide,
+[class*="iconBtn"]:hover svg.lucide,
+[class*="trigger"]:hover svg.lucide {
+  transform: scale(1.08);
+}
+
+/* Universal press compression for tactile haptic feel */
+button:active:not(:disabled) > svg.lucide,
+button:active:not(:disabled) [class*="Icon"] > svg.lucide,
+button:active:not(:disabled) [class*="ico"] > svg.lucide,
+button:active:not(:disabled) [class*="glyph"] > svg.lucide,
+a:active > svg.lucide,
+a:active [class*="Icon"] > svg.lucide,
+a:active [class*="ico"] > svg.lucide,
+[role="button"]:active:not([aria-disabled="true"]) > svg.lucide,
+[class*="round"]:active svg.lucide,
+[class*="iconBtn"]:active svg.lucide,
+[class*="trigger"]:active svg.lucide {
+  transform: scale(0.92);
+  transition-duration: 0.1s;
+}
+
+/* --- Contextual Icon Physics & Keyframe Animations --- */
+
+/* 1. Bell Chime / Ring */
+@keyframes bellRing {
+  0% { transform: rotate(0deg); }
+  12% { transform: rotate(-18deg); }
+  24% { transform: rotate(14deg); }
+  36% { transform: rotate(-10deg); }
+  48% { transform: rotate(7deg); }
+  60% { transform: rotate(-4deg); }
+  75% { transform: rotate(2deg); }
+  100% { transform: rotate(0deg); }
+}
+
+button:hover .lucide-bell,
+a:hover .lucide-bell,
+[class*="bell"]:hover .lucide-bell,
+[class*="bellSlot"]:hover .lucide-bell,
+[aria-label*="Notification"]:hover .lucide-bell {
+  transform-origin: 50% 15%;
+  animation: bellRing 0.75s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+/* 2. Chat / Message Bubble Bounce */
+@keyframes chatBounce {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.15) rotate(-6deg); }
+  60% { transform: scale(1.06) rotate(3deg); }
+  100% { transform: scale(1.08) rotate(0deg); }
+}
+
+button:hover .lucide-messages-square,
+button:hover .lucide-message-circle,
+button:hover .lucide-message-square,
+a:hover .lucide-messages-square,
+a:hover .lucide-message-circle,
+a:hover .lucide-message-square,
+[class*="chat"]:hover svg.lucide {
+  animation: chatBounce 0.42s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* 3. Search Lens Sweep */
+.dockField:hover .lucide-search,
+.dockField:focus-within .lucide-search,
+button:hover .lucide-search,
+a:hover .lucide-search {
+  transform: scale(1.12) rotate(-6deg);
+}
+
+/* 4. Directional Arrows (Nudge outward) */
+button:hover .lucide-arrow-right,
+a:hover .lucide-arrow-right,
+button:hover .lucide-chevron-right,
+a:hover .lucide-chevron-right {
+  transform: translateX(3px);
+}
+
+button:hover .lucide-arrow-left,
+a:hover .lucide-arrow-left,
+button:hover .lucide-chevron-left,
+a:hover .lucide-chevron-left {
+  transform: translateX(-3px);
+}
+
+button:hover .lucide-arrow-up-right,
+a:hover .lucide-arrow-up-right {
+  transform: translate(2px, -2px);
+}
+
+/* 5. Dropdown Chevron Toggle (Smooth 180° rotation) */
+[aria-expanded="true"] .lucide-chevron-down,
+[data-state="open"] .lucide-chevron-down,
+.open .lucide-chevron-down,
+[class*="Open"] .lucide-chevron-down {
+  transform: rotate(180deg);
+}
+
+/* 6. Dismiss / Close (Smooth 90° rotation) */
+button:hover .lucide-x,
+a:hover .lucide-x {
+  transform: rotate(90deg) scale(1.1);
+}
+
+/* 7. Bookmark / Favorite Pop */
+@keyframes iconPop {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.28); }
+  65% { transform: scale(0.94); }
+  100% { transform: scale(1.1); }
+}
+
+button:hover .lucide-bookmark,
+button:hover .lucide-heart,
+button:hover .lucide-star,
+a:hover .lucide-bookmark,
+a:hover .lucide-heart,
+a:hover .lucide-star,
+[class*="Bookmark"]:hover svg.lucide,
+[class*="saved"]:hover svg.lucide {
+  animation: iconPop 0.35s cubic-bezier(0.34, 1.4, 0.64, 1) forwards;
+}
+
+/* 8. Settings / Gear Turn */
+button:hover .lucide-settings,
+a:hover .lucide-settings {
+  transform: rotate(45deg) scale(1.08);
+}
+
+/* 9. Refresh / Reload Turn */
+button:hover .lucide-rotate-ccw,
+a:hover .lucide-rotate-ccw {
+  transform: rotate(-180deg);
+}
+
+@keyframes lucideSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.lucide-loader,
+.lucide-loader-2,
+[class*="spin"] > svg.lucide {
+  animation: lucideSpin 0.9s linear infinite;
+}
+
+/* 10. Play Icon Lift & Pulse */
+button:hover .lucide-play,
+a:hover .lucide-play,
+[class*="play"]:hover .lucide-play,
+[class*="card"]:hover .lucide-play {
+  transform: scale(1.14) translateX(1px);
+  filter: drop-shadow(0 2px 8px rgba(255, 200, 74, 0.45));
+}
+
+/* 11. Navigation Icon Enhancements */
+button:hover .lucide-house,
+a:hover .lucide-house {
+  transform: scale(1.1) translateY(-1px);
+}
+
+button:hover .lucide-clapperboard,
+a:hover .lucide-clapperboard {
+  transform: scale(1.1) rotate(-4deg);
+}
+
+button:hover .lucide-tv-minimal-play,
+a:hover .lucide-tv-minimal-play {
+  transform: scale(1.1) translateY(-1px);
+}
+
+button:hover .lucide-drama,
+a:hover .lucide-drama {
+  transform: scale(1.1) rotate(4deg);
+}
+
+/* 12. Check / Verification confirmation */
+button:hover .lucide-check,
+button:hover .lucide-check-check,
+button:hover .lucide-check-circle-2 {
+  transform: scale(1.15);
+}
+
+/* Accessibility: Respect Reduced Motion Preferences */
+@media (prefers-reduced-motion: reduce) {
+  svg.lucide,
+  svg[class*="lucide"],
+  button:hover svg.lucide,
+  a:hover svg.lucide {
+    transition: none !important;
+    animation: none !important;
+    transform: none !important;
+  }
+}
